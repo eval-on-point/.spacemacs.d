@@ -313,7 +313,6 @@
 
   (require 'evil-adjust)
   (evil-adjust)
-  (load "~/.spacemacs.d/secret-codes.el")
 
   (spacemacs/toggle-desktop-environment-on)
   (spaceline-toggle-buffer-encoding-abbrev-off)
