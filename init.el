@@ -109,9 +109,11 @@
      (shell-scripts :variables shell-scripts-backend 'lsp)
      ;; slack
      (spacemacs-layouts :variables
+                        spacemacs-layouts-directory "/home/m/.spacemacs.d/layouts/"
                         spacemacs-layouts-restrict-spc-tab t
                         persp-autokill-buffer-on-remove 'kill-weak)
-     spacemacs-purpose
+     (spacemacs-purpose :variables
+                        purpose-layout-dirs '("/home/m/.spacemacs.d/purpose-layouts/"))
      spell-checking
      (sql :variables
           sql-capitalize-keywords t
@@ -365,10 +367,10 @@
   ;;             (save-buffer)))
   (setq browse-url-mosaic-program
         nil)
-
-  (with-eval-after-load 'org
-    (load-file "~/.spacemacs.d/private/org-habit-plus/org-habit-plus.el")
-    (add-to-list 'org-modules 'org-habit-plus t))
+;;
+;;  (with-eval-after-load 'org
+;;    (load-file "~/.spacemacs.d/private/org-habit-plus/org-habit-plus.el")
+;;    (add-to-list 'org-modules 'org-habit-plus t))
 
   (require 'org-fc-hydra)
   (setq org-fc-directories '("~/org/"))
