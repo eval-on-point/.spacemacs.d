@@ -11,15 +11,19 @@
     :config
     (progn
       (diminish 'lispyville-mode (lispyville-mode-line-string "🍰" "🍰"))
-      (lispyville-set-key-theme '(operators
-                                  c-w
-                                  c-u
-                                  prettify
-                                  atom-movement
+      (lispyville-set-key-theme '(additional
+                                  additional-insert
                                   additional-motions
+                                  atom-movement
+                                  c-u
+                                  c-w
                                   commentary
+                                  escape
+                                  mark-special
+                                  operators
+                                  prettify
                                   slurp/barf-lispy
-                                  escape)))))
+                                  wrap)))))
 
 (defun lispy/init-lispy ()
   (use-package lispy

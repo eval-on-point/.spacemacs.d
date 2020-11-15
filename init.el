@@ -7,13 +7,13 @@
    dotspacemacs-ask-for-lazy-installation t
    dotspacemacs-configuration-layer-path '("~/.emacs.d/private/")
    dotspacemacs-configuration-layers
-   '(local-dev
-     ansible
+   '(ansible
      asciidoc
      (auto-completion :variables
                       auto-completion-enable-help-tooltip t
                       auto-completion-enable-sort-by-usage t)
      (clojure :variables
+              clojure-backend 'lsp
               clojure-enable-sayid nil
               clojure-enable-clj-refactor t
               clojure-enable-fancify-symbols t
@@ -57,6 +57,7 @@
      (ibuffer :variables ibuffer-group-buffers-by 'projects)
      (javascript :variables javascript-backend 'lsp)
      (julia :variables julia-backend 'lsp)
+     (json :variables json-backend 'lsp)
      kubernetes
      latex
      (lispy :variables
@@ -87,9 +88,9 @@
           org-journal-file-format "%Y-%m-%d.org"
           org-journal-time-format "[%F %R]"
           org-enable-github-support t)
-     org-roam
+     ;; org-roam
      (python :variables python-backend 'lsp
-             python-lsp-server 'pyls
+             python-lsp-server 'pyright
              python-test-runner 'pytest)
      (conda :variables
             conda-anaconda-home "/opt/miniconda3"
@@ -126,13 +127,26 @@
                treemacs-use-scope-type 'Perspectives
                treemacs-use-follow-mode nil
                treemacs-use-filewatch-mode t
-               treemacs-use-git-mode 'extended)
+               treemacs-use-git-mode 'extended
+               treemacs-use-icons-dired nil)
      (unicode-fonts :variables
                     unicode-fonts-enable-ligatures t
-	                  unicode-fonts-ligature-modes '(prog-mode vterm-mode))
+                    unicode-fonts-ligature-modes '(prog-mode vterm-mode)
+	                  unicode-fonts-ligature-set
+                    '("www" "**" "***" "**/" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
+                      ":::" ":=" "!!" "!=" "!==" "-}" "----" "-->" "->" "->>"
+                      "-<" "-<<" "-~" "#{" "#[" "##" "###" "####" "#(" "#?" "#_"
+                      "#_(" ".-" ".=" ".." "..<" "..." "?=" "??" ";;" "/*" "/**"
+                      "/=" "/==" "/>" "//" "///" "&&" "||" "||=" "|=" "|>" "^=" "$>"
+                      "++" "+++" "+>" "=:=" "==" "===" "==>" "=>" "=>>" "<="
+                      "=<<" "=/=" ">-" ">=" ">=>" ">>" ">>-" ">>=" ">>>" "<*"
+                      "<*>" "<|" "<|>" "<$" "<$>" "<!--" "<-" "<--" "<->" "<+"
+                      "<+>" "<=" "<==" "<=>" "<=<" "<>" "<<" "<<-" "<<=" "<<<"
+                      "<~" "<~~" "</" "</>" "~@" "~-" "~>" "~~" "~~>" "%%"))
      version-control
      xclipboard
-     (yaml :variables yaml-enable-lsp t))
+     (yaml :variables yaml-enable-lsp t)
+     local-dev)
 
    dotspacemacs-additional-packages
    '((org-fc
@@ -147,10 +161,12 @@
      org-roam
      mixed-pitch
      clojure-snippets
-     eterm-256color)
+     eterm-256color
+     all-the-icons-dired)
 
    dotspacemacs-frozen-packages '()
    dotspacemacs-excluded-packages '(evil-escape
+                                    evil-unimpaired
 				                            all-the-icons)
    dotspacemacs-install-packages 'used-but-keep-unused))
 
@@ -176,8 +192,8 @@
                          doom-city-lights
                          doom-manegarm)
    dotspacemacs-colorize-cursor-according-to-state t
-   ;;   dotspacemacs-mode-line-theme 'custom
-   dotspacemacs-mode-line-theme 'spacemacs
+   dotspacemacs-mode-line-theme 'custom
+   ;; dotspacemacs-mode-line-theme 'spacemacs
    dotspacemacs-default-font '("FiraCode Nerd Font"
                                :size 8.0
                                :weight normal
@@ -234,7 +250,7 @@
    ;; If non-nil pressing the closing parenthesis `)' key in insert mode passes
    ;; over any automatically added closing parenthesis, bracket, quote, etc…
    ;; This can be temporary disabled by pressing `C-q' before `)'. (default nil)
-   dotspacemacs-smart-closing-parenthesis t
+   dotspacemacs-smart-closing-parenthesis nil
    dotspacemacs-highlight-delimiters 'all
    dotspacemacs-persistent-server t
    dotspacemacs-search-tools '("ag" "pt" "ack" "grep")
@@ -242,7 +258,79 @@
    dotspacemacs-whitespace-cleanup 'trailing))
 
 (defun dotspacemacs/user-init ()
+
+  ;; (defun spaceline-custom-theme (&rest additional-segments)
+  ;;   "Custom spaceline theme."
+  ;;   (spaceline-compile
+  ;;     `(major-mode (minor-modes :whem active) buffer-id)
+  ;;     `((line-column :separator " | " :priority 3)
+  ;;       ,@additional-segments))
+  ;;   (setq-default mode-line-format '("%e" (:eval (spaceline-ml-main)))))
+
   (load "~/.spacemacs.d/config/modeline.el")
+
+  (defun spaceline-custom-theme (&rest additional-segments)
+    (setq spaceline-all-the-icons-highlight-file-name t)
+    (spaceline-all-the-icons-theme)
+    (spaceline-all-the-icons--setup-git-ahead) ;; Enable # of commits ahead of upstream in git
+    (spaceline-all-the-icons--setup-anzu)
+
+    (spaceline-define-segment my-mode-icon
+      "An `all-the-icons' segment indicating the current buffer's mode with an icon"
+      (let ((icon (all-the-icons-icon-for-mode major-mode)))
+        (unless (symbolp icon)
+          (propertize icon
+                      'help-echo (format "Major-mode: `%s'" major-mode)))))
+
+    (spaceline-compile
+      ;; left side
+      '(((persp-name
+          workspace-number
+          window-number)
+         :fallback evil-state
+         :face highlight-face
+         :priority 100)
+        (purpose :priority 94)
+        (all-the-icons-modified
+         buffer-id
+         remote-host
+         buffer-size)
+        auto-compile
+        (process :when active)
+        (my-mode-icon
+         minor-modes)
+        (all-the-icons-vc-icon
+         all-the-icons-vc-status
+         ((all-the-icons-git-ahead
+           all-the-icons-git-status) :separator " "))
+        ((flycheck-error flycheck-warning flycheck-info)
+         :when active
+         :priority 89)
+        ((org-pomodoro :when active)
+         (org-clock :when active))
+        (anzu :face 'mode-line))
+      ;; right side
+      `((python-pyvenv :fallback python-pyenv)
+        (selection-info :priority 95)
+        input-method
+        (global :when active)
+        (column :priority 99)))
+    (spaceline-toggle-buffer-size-off)
+    (setq-default mode-line-format '("%e" (:eval (spaceline-ml-main))))
+    (spacemacs|diminish clj-refactor-mode)
+    (spacemacs|diminish which-key-mode)
+    (spacemacs|diminish yas-minor-mode)
+    (spacemacs|diminish company-mode)
+    (spacemacs|diminish auto-fill-function)
+    (spacemacs|diminish smartparens-mode)
+    (spacemacs|diminish evil-cleverparens-mode)
+    (spacemacs|diminish spacemacs-whitespace-cleanup-mode)
+    (spacemacs|diminish aggressive-indent-mode)
+    (spacemacs|diminish column-enforce-mode)
+    (spacemacs|diminish org-roam-mode)
+    (spacemacs|diminish all-the-icons-dired-mode)
+    (spaceline-toggle-hud-off))
+
   (setq exwm-custom-init
         (lambda ()
           (interactive)
@@ -271,42 +359,14 @@
   (setq kill-buffer-query-functions nil))
 
 (defun dotspacemacs/user-config ()
-  (defun lsp-mode-line ()
-    "Construct the mode line text."
-    (if-let ((workspaces (lsp-workspaces)))
-        (propertize " 🔎" 'face 'success)
-      (propertize " 🔎" 'face 'warning)))
-
-  (defun parsed-modeline-info ()
-    (substring (nth 1 (split-string
-                       (cider--modeline-info) ":"))
-               0 -1))
-
-  (defun my-cider-lighter ()
-    `((:propertize ,(if (string= "not connected" (cider--modeline-info))
-                        "🍺"
-                      (format "🍻[%s]" (parsed-modeline-info)))
-                   face
-                   ,(pcase (cider--modeline-info)
-                      ("not connected" '((t :inherit warning)))
-                      ((rx "cljs") '((t :inherit all-the-icons-cyan)))
-                      ((rx "clj") '((t :inherit success)))
-                      (_ '((t :inherit error)))))))
-
-  (setq cider-mode-line
-        '(:eval (my-cider-lighter)))
-
-  (spacemacs|diminish clj-refactor-mode)
-  (spacemacs|diminish which-key-mode)
-  (spacemacs|diminish yas-minor-mode)
-  (spacemacs|diminish company-mode)
-  (spacemacs|diminish auto-fill-function)
-  (spacemacs|diminish smartparens-mode)
-  (spacemacs|diminish evil-cleverparens-mode)
-  (spacemacs|diminish spacemacs-whitespace-cleanup-mode)
-  (spacemacs|diminish aggressive-indent-mode)
-  (spacemacs|diminish column-enforce-mode)
-  (spacemacs|diminish org-roam-mode)
+  (setq projectile-switch-project-action 'projectile-vc
+        projectile-git-submodule-command nil)
+  (add-hook 'dired-mode-hook 'all-the-icons-dired-mode)
+  (with-eval-after-load 'vterm
+    (add-to-list 'vterm-eval-cmds
+                 '("find-files"
+                   (lambda (&rest ARGS)
+                     (mapcar 'find-file ARGS)))))
 
   (load "~/.spacemacs.d/config/window-conf.el")
 
@@ -316,7 +376,6 @@
   (evil-adjust)
 
   (spacemacs/toggle-desktop-environment-on)
-  (spaceline-toggle-buffer-encoding-abbrev-off)
 
   (spacemacs/toggle-vi-tilde-fringe-off)
 
@@ -326,12 +385,12 @@
   (spacemacs/toggle-evil-visual-mark-mode-on)
   (setq-default evil-ex-search-vim-style-regexp t)
   (avy-setup-default)
-  (define-key evil-normal-state-map (kbd "s") 'avy-goto-char)
-
   (defun switch-to-buffer--hack (orig-fun &rest args)
     (if-let ((win (get-buffer-window (car args))))
         (select-window win)
       (apply orig-fun args)))
+
+  (define-key evil-normal-state-map (kbd "s") 'avy-goto-char)
 
   (advice-add 'switch-to-buffer :around #'switch-to-buffer--hack)
 
@@ -366,10 +425,10 @@
   ;;             (save-buffer)))
   (setq browse-url-mosaic-program
         nil)
-;;
-;;  (with-eval-after-load 'org
-;;    (load-file "~/.spacemacs.d/private/org-habit-plus/org-habit-plus.el")
-;;    (add-to-list 'org-modules 'org-habit-plus t))
+  ;;
+  ;;  (with-eval-after-load 'org
+  ;;    (load-file "~/.spacemacs.d/private/org-habit-plus/org-habit-plus.el")
+  ;;    (add-to-list 'org-modules 'org-habit-plus t))
 
   (require 'org-fc-hydra)
   (setq org-fc-directories '("~/org/"))
@@ -409,8 +468,11 @@
                       (t nil)))))
 
   (evil-set-initial-state 'vterm-mode 'emacs)
-  (evil-define-key 'normal vterm-mode-map
-    (kbd "i") 'evil-emacs-state)
+  (add-hook 'vterm-mode-hook
+            (lambda ()
+              (add-hook 'evil-insert-state-entry-hook
+                        'evil-emacs-state
+                        nil t)))
 
   (setq kill-buffer-query-functions
         (delq 'process-kill-buffer-query-function kill-buffer-query-functions))
@@ -436,7 +498,7 @@
   (setq-default column-enforce-column 120)
   (setq projectile-indexing-method 'hybrid)
 
-  (spacemacs/toggle-evil-safe-lisp-structural-editing-on-register-hooks)
+  ;; (spacemacs/toggle-evil-safe-lisp-structural-editing-on-register-hooks)
 
   (spacemacs/declare-prefix "o" "custom")
 
@@ -448,18 +510,17 @@
 
   (add-hook 'prog-mode-hook #'rainbow-mode)
 
-  (setq spaceline-org-clock-p t)
 
   (display-time-mode 0)
   (setq-default display-time-default-load-average nil)
 
   (setq-default js-indent-level 2)
 
-  (use-package lsp-mode
-    :ensure t
-    :hook ((clojure-mode . lsp)
-           (clojurec-mode . lsp)
-           (clojurescript-mode . lsp)))
+  ;; (use-package lsp-mode
+  ;;   :ensure t
+  ;;   :hook ((clojure-mode . lsp)
+  ;;          (clojurec-mode . lsp)
+  ;;          (clojurescript-mode . lsp)))
 
   (setq cider-repl-display-help-banner nil
         cider-font-lock-dynamically '(macro core function var)
@@ -508,13 +569,13 @@
       (let-routes 1)
       (context 2)))
 
-  (add-hook 'cider-mode-hook
-            (lambda ()
-              (defun cider-eval-sexp-at-point-to-buffer ()
-                (interactive)
-                (cider-pprint-eval-last-sexp t))
-              (lispy-define-key lispy-mode-map "e" 'cider-eval-sexp-at-point)
-              (lispy-define-key lispy-mode-map "E" 'cider-eval-sexp-at-point-to-buffer)))
+  ;; (add-hook 'cider-mode-hook
+  ;;           (lambda ()
+  ;;             (defun cider-eval-sexp-at-point-to-buffer ()
+  ;;               (interactive)
+  ;;               (cider-pprint-eval-last-sexp t))
+  ;;             (lispy-define-key lispy-mode-map "e" 'cider-eval-sexp-at-point)
+  ;;             (lispy-define-key lispy-mode-map "E" 'cider-eval-sexp-at-point-to-buffer)))
 
   (setq-default cljr-auto-sort-ns nil
                 cljr-auto-clean-ns nil
@@ -523,7 +584,6 @@
   (with-eval-after-load 'clj-refactor
     (lispy-define-key lispy-mode-map "/" 'lispy-splice
       :inserter 'cljr-slash)
-
 
     (setq cljr-magic-requires-namespaces
           '(("csv" . "clojure.data.csv")
@@ -613,11 +673,18 @@
   (use-package yasnippet
     :diminish 'yas-minor-mode
     :config
-    (progn (evil-define-minor-mode-key 'insert
-             'yas-minor-mode
-             " "
-             yas-maybe-expand)
-           (setq yas-key-syntaxes '(yas-try-key-from-whitespace))))
+    (progn
+      (defun yas-no-expand-in-comment/string ()
+        (setq yas-buffer-local-condition
+              '(if (nth 8 (syntax-ppss)) ;; non-nil if in a string or comment
+                   '(require-snippet-condition . force-in-comment)
+                 t)))
+      (add-hook 'prog-mode-hook 'yas-no-expand-in-comment/string)
+      (evil-define-minor-mode-key 'insert
+        'yas-minor-mode
+        " "
+        yas-maybe-expand)
+      (setq yas-key-syntaxes '(yas-try-key-from-whitespace))))
 
   ;; haskell setup
   (with-eval-after-load "haskell-mode"
@@ -666,33 +733,41 @@
 This is an auto-generated function, do not modify its content directly, use
 Emacs customize menu instead.
 This function is called at the very end of Spacemacs initialization."
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(evil-want-Y-yank-to-eol t)
- '(org-agenda-files
-   '("~/org/journal/2020-08-10.org" "~/org/journal/2020-08-07.org" "~/org/journal/2020-08-06.org" "~/org/journal/2020-08-05.org" "~/org/journal/2020-08-04.org" "~/org/journal/2020-08-03.org" "~/org/journal/2020-08-02.org" "~/org/journal/2020-08-01.org" "~/org/journal/2020-07-31.org" "~/org/journal/2020-07-30.org" "~/org/journal/2020-07-29.org" "~/org/journal/2020-07-28.org" "~/org/journal/2020-07-27.org" "~/org/journal/2020-07-26.org" "~/org/journal/2020-07-24.org"))
- '(package-selected-packages
-   '(vterm-toggle multi-vterm conda lsp-ui envrc fira-code-mode unicode-fonts ucs-utils font-utils persistent-soft ligature ox-jira org-jira nix-mode helm-nixos-options company-nixos-options nixos-options lsp-julia julia-repl julia-mode evil-adjust kaocha-runner exwm xelb exotica-theme evil-org evil-magit magit git-commit with-editor eterm-256color xterm-color espresso-theme eshell-z eshell-prompt-extras esh-help emmet-mode elfeed-org elfeed-goodies ace-jump-mode noflet elfeed edbi epc ctable concurrent deferred ebuild-mode dracula-theme doom-themes dockerfile-mode docker transient tablist json-mode docker-tramp json-snatcher json-reformat django-theme desktop-environment darktooth-theme darkokai-theme darkmine-theme darkburn-theme dap-mode posframe lsp-treemacs bui lsp-mode dash-functional dante lcr dakrone-theme cython-mode cyberpunk-theme csv-mode company-web web-completion-data company-restclient restclient know-your-http-well ws-butler writeroom-mode winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package treemacs-projectile treemacs-persp treemacs-icons-dired treemacs-evil toc-org symon symbol-overlay string-inflection spaceline-all-the-icons restart-emacs request rainbow-delimiters popwin pcre2el password-generator paradox overseer org-superstar org-bullets open-junk-file nameless move-text macrostep lorem-ipsum link-hint indent-guide hybrid-mode hungry-delete hl-todo highlight-parentheses highlight-numbers highlight-indentation helm-xref helm-themes helm-swoop helm-purpose helm-projectile helm-mode-manager helm-make helm-ls-git helm-flx helm-descbinds helm-ag google-translate golden-ratio font-lock+ flycheck-package flycheck-elsa flx-ido fill-column-indicator fancy-battery eyebrowse expand-region evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-textobj-line evil-surround evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state evil-lion evil-indent-plus evil-iedit-state evil-goggles evil-exchange evil-escape evil-ediff evil-cleverparens evil-args evil-anzu emr elisp-slime-nav editorconfig dumb-jump dotenv-mode diminish devdocs define-word company-terraform company-statistics company-shell company-reftex company-quickhelp company-ghci company-ghc company-emoji company-cabal company-auctex company-ansible company-anaconda command-log-mode column-enforce-mode color-theme-sanityinc-tomorrow color-theme-sanityinc-solarized color-identifiers-mode cmm-mode clues-theme clojure-snippets clj-refactor clean-aindent-mode cider-eval-sexp-fu chocolate-theme cherry-blossom-theme centered-cursor-mode cargo busybee-theme bubbleberry-theme browse-at-remote blacken birds-of-paradise-plus-theme badwolf-theme auto-yasnippet auto-highlight-symbol auto-dictionary auto-compile auctex-latexmk attrap arduino-mode apropospriate-theme anti-zenburn-theme ansible-doc ansible ample-zen-theme ample-theme alert alect-themes aggressive-indent afternoon-theme adoc-mode ace-link ace-jump-helm-line ac-ispell))
- '(safe-local-variable-values
-   '((projectile-project-type quote clojure-cli)
-     (projectile-project-type clojure-cli)
-     (projectile-project-type 'clojure-cli)
-     (lsp-file-watch-ignored "\\.git$" "resources" "target" "/dist$" "/log$")
-     (projectile-project-root . "~/projects/professional/VA-Fix/ui")
-     (projectile-project-root "~/projects/professional/VA-Fix/ui")
-     (lsp-file-watch-ignored "\\.git$" "resources/public/js$" "target$" "dist$" "log$")
-     (lsp-file-watch-ignored "[/\\\\]\\.git$" "[/\\\\]\\.hg$" "[/\\\\]\\.bzr$" "[/\\\\]_darcs$" "[/\\\\]\\.svn$" "[/\\\\]_FOSSIL_$" "[/\\\\]\\.idea$" "[/\\\\]\\.ensime_cache$" "[/\\\\]\\.eunit$" "[/\\\\]node_modules$" "[/\\\\]\\.fslckout$" "[/\\\\]\\.tox$" "[/\\\\]\\.stack-work$" "[/\\\\]\\.bloop$" "[/\\\\]\\.metals$" "[/\\\\]target$" "[/\\\\]resources/public/js$" "[/\\\\]\\.ccls-cache$" "[/\\\\]\\.deps$" "[/\\\\]build-aux$" "[/\\\\]autom4te.cache$" "[/\\\\]\\.reference$")
-     (cider-clojure-cli-global-options nil)
-     (javascript-backend . tide)
-     (javascript-backend . tern)
-     (javascript-backend . lsp))))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
-)
+  (custom-set-variables
+   ;; custom-set-variables was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   '(evil-want-Y-yank-to-eol t)
+   '(org-agenda-files
+     '("~/org/journal/2020-08-10.org" "~/org/journal/2020-08-07.org" "~/org/journal/2020-08-06.org" "~/org/journal/2020-08-05.org" "~/org/journal/2020-08-04.org" "~/org/journal/2020-08-03.org" "~/org/journal/2020-08-02.org" "~/org/journal/2020-08-01.org" "~/org/journal/2020-07-31.org" "~/org/journal/2020-07-30.org" "~/org/journal/2020-07-29.org" "~/org/journal/2020-07-28.org" "~/org/journal/2020-07-27.org" "~/org/journal/2020-07-26.org" "~/org/journal/2020-07-24.org"))
+   '(package-selected-packages
+     '(all-the-icons-dired vterm-toggle multi-vterm conda lsp-ui envrc fira-code-mode unicode-fonts ucs-utils font-utils persistent-soft ligature ox-jira org-jira nix-mode helm-nixos-options company-nixos-options nixos-options lsp-julia julia-repl julia-mode evil-adjust kaocha-runner exwm xelb exotica-theme evil-org evil-magit magit git-commit with-editor eterm-256color xterm-color espresso-theme eshell-z eshell-prompt-extras esh-help emmet-mode elfeed-org elfeed-goodies ace-jump-mode noflet elfeed edbi epc ctable concurrent deferred ebuild-mode dracula-theme doom-themes dockerfile-mode docker transient tablist json-mode docker-tramp json-snatcher json-reformat django-theme desktop-environment darktooth-theme darkokai-theme darkmine-theme darkburn-theme dap-mode posframe lsp-treemacs bui lsp-mode dash-functional dante lcr dakrone-theme cython-mode cyberpunk-theme csv-mode company-web web-completion-data company-restclient restclient know-your-http-well ws-butler writeroom-mode winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package treemacs-projectile treemacs-persp treemacs-icons-dired treemacs-evil toc-org symon symbol-overlay string-inflection spaceline-all-the-icons restart-emacs request rainbow-delimiters popwin pcre2el password-generator paradox overseer org-superstar org-bullets open-junk-file nameless move-text macrostep lorem-ipsum link-hint indent-guide hybrid-mode hungry-delete hl-todo highlight-parentheses highlight-numbers highlight-indentation helm-xref helm-themes helm-swoop helm-purpose helm-projectile helm-mode-manager helm-make helm-ls-git helm-flx helm-descbinds helm-ag google-translate golden-ratio font-lock+ flycheck-package flycheck-elsa flx-ido fill-column-indicator fancy-battery eyebrowse expand-region evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-textobj-line evil-surround evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state evil-lion evil-indent-plus evil-iedit-state evil-goggles evil-exchange evil-escape evil-ediff evil-cleverparens evil-args evil-anzu emr elisp-slime-nav editorconfig dumb-jump dotenv-mode diminish devdocs define-word company-terraform company-statistics company-shell company-reftex company-quickhelp company-ghci company-ghc company-emoji company-cabal company-auctex company-ansible company-anaconda command-log-mode column-enforce-mode color-theme-sanityinc-tomorrow color-theme-sanityinc-solarized color-identifiers-mode cmm-mode clues-theme clojure-snippets clj-refactor clean-aindent-mode cider-eval-sexp-fu chocolate-theme cherry-blossom-theme centered-cursor-mode cargo busybee-theme bubbleberry-theme browse-at-remote blacken birds-of-paradise-plus-theme badwolf-theme auto-yasnippet auto-highlight-symbol auto-dictionary auto-compile auctex-latexmk attrap arduino-mode apropospriate-theme anti-zenburn-theme ansible-doc ansible ample-zen-theme ample-theme alert alect-themes aggressive-indent afternoon-theme adoc-mode ace-link ace-jump-helm-line ac-ispell))
+   '(safe-local-variable-values
+     '((eval setq dockerfile-build-args
+             (list
+              (concat "USER="
+                      (user-login-name))))
+       (test-var + 1 2)
+       (dockerfile-image-name . "ata-devops-env")
+       (dockerfile-image-name . "airdex-infra-builder")
+       (dockerfile-image-name . "airdex-infra")
+       (projectile-project-type quote clojure-cli)
+       (projectile-project-type clojure-cli)
+       (projectile-project-type 'clojure-cli)
+       (lsp-file-watch-ignored "\\.git$" "resources" "target" "/dist$" "/log$")
+       (projectile-project-root . "~/projects/professional/VA-Fix/ui")
+       (projectile-project-root "~/projects/professional/VA-Fix/ui")
+       (lsp-file-watch-ignored "\\.git$" "resources/public/js$" "target$" "dist$" "log$")
+       (lsp-file-watch-ignored "[/\\\\]\\.git$" "[/\\\\]\\.hg$" "[/\\\\]\\.bzr$" "[/\\\\]_darcs$" "[/\\\\]\\.svn$" "[/\\\\]_FOSSIL_$" "[/\\\\]\\.idea$" "[/\\\\]\\.ensime_cache$" "[/\\\\]\\.eunit$" "[/\\\\]node_modules$" "[/\\\\]\\.fslckout$" "[/\\\\]\\.tox$" "[/\\\\]\\.stack-work$" "[/\\\\]\\.bloop$" "[/\\\\]\\.metals$" "[/\\\\]target$" "[/\\\\]resources/public/js$" "[/\\\\]\\.ccls-cache$" "[/\\\\]\\.deps$" "[/\\\\]build-aux$" "[/\\\\]autom4te.cache$" "[/\\\\]\\.reference$")
+       (cider-clojure-cli-global-options nil)
+       (javascript-backend . tide)
+       (javascript-backend . tern)
+       (javascript-backend . lsp))))
+  (custom-set-faces
+   ;; custom-set-faces was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   )
+  )

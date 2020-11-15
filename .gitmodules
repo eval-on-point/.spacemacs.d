@@ -7,3 +7,6 @@
 [submodule "private/all-the-icons.el"]
 	path = private/all-the-icons.el
 	url = git@github.com:domtronn/all-the-icons.el.git
+[submodule "private/local/all-the-icons.el"]
+	path = private/local/all-the-icons.el
+	url = git@github.com:eval-on-point/all-the-icons.el.git
