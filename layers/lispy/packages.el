@@ -1,5 +1,6 @@
 (defconst lispy-packages
-  '((lispy :location (recipe :fetcher local))
+  '(lispy
+  ;  (lispy :location (recipe :fetcher local))
     lispyville))
 
 (defun lispy/init-lispyville ()
@@ -11,19 +12,19 @@
     :config
     (progn
       (diminish 'lispyville-mode (lispyville-mode-line-string "🍰" "🍰"))
+      (lispy-define-key lispy-mode-map "v" #'lispyville-toggle-mark-type)
       (lispyville-set-key-theme '(additional
                                   additional-insert
                                   additional-motions
-                                  atom-movement
+                                  additional-wrap
                                   c-u
                                   c-w
                                   commentary
                                   escape
-                                  mark-special
+                                  mark-toggle
                                   operators
                                   prettify
-                                  slurp/barf-lispy
-                                  wrap)))))
+                                  slurp/barf-lispy)))))
 
 (defun lispy/init-lispy ()
   (use-package lispy

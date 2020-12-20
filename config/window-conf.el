@@ -22,14 +22,20 @@
             ((kbd "s-C-F") . (lambda () (interactive) (exwm/app-launcher "firefox")))
             ((kbd "s-s") . (lambda () (interactive) (exwm/app-launcher "slack")))
             ((kbd "s-p") . (lambda () (interactive) (exwm/app-launcher "pavucontrol")))
-            ((kbd "<M-return>") . #'projectile-run-vterm)
+            ((kbd "<M-return>") . (lambda ()
+                                    (interactive)
+                                    (if (projectile-project-p)
+                                        (projectile-run-vterm)
+                                      (vterm))))
             ((kbd "<s-return>") . (lambda ()
                                     (interactive)
-                                    (projectile-run-vterm t))))))
+                                    (if (projectile-project-p)
+                                        (projectile-run-vterm t)
+                                      (vterm)))))))
   :custom
   (mouse-autoselect-window t)
   (focus-follows-mouse t)
-  (exwm-randr-workspace-monitor-plist '(0 "DP1" 1 "DP3" 2 "eDP1")))
+  (exwm-randr-workspace-monitor-plist '(0 "DP3" 1 "DP1" 2 "eDP1")))
 
 (use-package window-purpose
   :config

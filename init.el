@@ -19,7 +19,9 @@
               clojure-enable-fancify-symbols t
               clojure-enable-linters '(clj-kondo)
               clojure-align-forms-automatically t
-              clojure-indent-style 'align-arguments)
+              clojure-indent-style 'align-arguments
+              clojure-align-reader-conditionals t
+              clojure--beginning-of-reader-conditional-regexp "\\[")
      (colors :variables colors-colorize-identifiers 'variables)
      command-log
      csv
@@ -105,7 +107,8 @@
      (shell :variables
             shell-default-height 30
             shell-default-position 'bottom
-            shell-default-shell 'vterm)
+            shell-default-shell 'vterm
+            vterm-always-compile-module t)
      (shell-scripts :variables shell-scripts-backend 'lsp)
      ;; slack
      (spacemacs-layouts :variables
@@ -133,9 +136,9 @@
                     unicode-fonts-enable-ligatures t
                     unicode-fonts-ligature-modes '(prog-mode vterm-mode)
 	                  unicode-fonts-ligature-set
-                    '("www" "**" "***" "**/" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
+                    '("www" "**" "***" "/*" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
                       ":::" ":=" "!!" "!=" "!==" "-}" "----" "-->" "->" "->>"
-                      "-<" "-<<" "-~" "#{" "#[" "##" "###" "####" "#(" "#?" "#_"
+                      "-<" "-<<" "-~" "#{" "#[" "#(" "#?" "#_"
                       "#_(" ".-" ".=" ".." "..<" "..." "?=" "??" ";;" "/*" "/**"
                       "/=" "/==" "/>" "//" "///" "&&" "||" "||=" "|=" "|>" "^=" "$>"
                       "++" "+++" "+>" "=:=" "==" "===" "==>" "=>" "=>>" "<="
@@ -154,6 +157,8 @@
                         :repo "l3kn/org-fc"
                         :files (:defaults "awk" "demo.org")))
      (evil-adjust :location (recipe :fetcher github :repo "troyp/evil-adjust"))
+     helm-rg
+   delight
      kaocha-runner
      inf-clojure
      envrc
@@ -184,7 +189,7 @@
                                 (recents . 5))
    dotspacemacs-startup-buffer-responsive t
    dotspacemacs-scratch-mode 'emacs-lisp-mode
-   dotspacemacs-themes '(doom-solarized-dark
+   dotspacemacs-themes '(solarized-dark
                          solarized-light
                          doom-fairy-floss
                          doom-solarized-light
@@ -281,7 +286,6 @@
         (unless (symbolp icon)
           (propertize icon
                       'help-echo (format "Major-mode: `%s'" major-mode)))))
-
     (spaceline-compile
       ;; left side
       '(((persp-name
@@ -317,18 +321,6 @@
         (column :priority 99)))
     (spaceline-toggle-buffer-size-off)
     (setq-default mode-line-format '("%e" (:eval (spaceline-ml-main))))
-    (spacemacs|diminish clj-refactor-mode)
-    (spacemacs|diminish which-key-mode)
-    (spacemacs|diminish yas-minor-mode)
-    (spacemacs|diminish company-mode)
-    (spacemacs|diminish auto-fill-function)
-    (spacemacs|diminish smartparens-mode)
-    (spacemacs|diminish evil-cleverparens-mode)
-    (spacemacs|diminish spacemacs-whitespace-cleanup-mode)
-    (spacemacs|diminish aggressive-indent-mode)
-    (spacemacs|diminish column-enforce-mode)
-    (spacemacs|diminish org-roam-mode)
-    (spacemacs|diminish all-the-icons-dired-mode)
     (spaceline-toggle-hud-off))
 
   (setq exwm-custom-init
@@ -359,8 +351,10 @@
   (setq kill-buffer-query-functions nil))
 
 (defun dotspacemacs/user-config ()
-  (setq projectile-switch-project-action 'projectile-vc
-        projectile-git-submodule-command nil)
+  (add-hook 'after-save-hook 'magit-after-save-refresh-status t)
+
+  (setq projectile-git-submodule-command nil)
+
   (add-hook 'dired-mode-hook 'all-the-icons-dired-mode)
   (with-eval-after-load 'vterm
     (add-to-list 'vterm-eval-cmds
@@ -374,6 +368,8 @@
 
   (require 'evil-adjust)
   (evil-adjust)
+
+  (setq evil-insert-state-cursor '("#2aa198" (bar . 2)))
 
   (spacemacs/toggle-desktop-environment-on)
 
@@ -390,7 +386,8 @@
         (select-window win)
       (apply orig-fun args)))
 
-  (define-key evil-normal-state-map (kbd "s") 'avy-goto-char)
+  (define-key evil-normal-state-map (kbd "s") 'avy-goto-word-or-subword-1)
+  (define-key evil-normal-state-map (kbd "C-h") 'avy-pop-mark)
 
   (advice-add 'switch-to-buffer :around #'switch-to-buffer--hack)
 
@@ -526,11 +523,16 @@
         cider-font-lock-dynamically '(macro core function var)
         nrepl-sync-request-timeout 120
         cider-stacktrace-default-filters '(project)
-        ;; cider-jdk-src-paths '("~/.java-src/java-11-openjdk"
-        ;;                       "~/.java-src/java-8-openjdk")
-        )
+        cider-jdk-src-paths nil)
 
-  (setq cider-repl-pop-to-buffer-on-connect 'display-only)
+  (eval-after-load 'cider
+    '(progn
+       (cider-add-to-alist 'cider-jack-in-dependencies
+                           "org.tcrawley/dynapath" "0.2.5")
+       (cider-add-to-alist 'cider-jack-in-dependencies
+                           "com.cemerick/pomegranate" "0.4.0")))
+
+  (setq cider-repl-pop-to-buffer-on-connect nil)
   (setq cider-allow-jack-in-without-project t)
   ;; (setq cider-clojure-cli-global-options "-A:scratch")
 
@@ -541,8 +543,32 @@
   (setq cljr-warn-on-eval nil
         cljr-hotload-dependencies t)
 
+  (spacemacs|use-package-add-hook clj-refactor
+    :post-config
+    (spacemacs|forall-clojure-modes m
+      (dolist (r cljr--all-helpers)
+        (let* ((binding (car r))
+               (func (cadr r)))
+          (unless (and (eq clojure-backend 'lsp)
+                       (member binding '("cn" "el" "ml" "il" "is" "ef" "am")))
+            (when (string-prefix-p "r" binding) (store-substring binding 0 ?R))
+            (when (not (string-prefix-p "hydra" (symbol-name func)))
+              (spacemacs/set-leader-keys-for-major-mode m
+                (concat "r" binding) func)))))
+      (when (eq clojure-backend 'lsp)
+        (spacemacs/set-leader-keys-for-major-mode m
+          "rcn" 'lsp-clojure-clean-ns
+          "rel" 'lsp-clojure-expand-let
+          "rml" 'lsp-clojure-move-to-let
+          "ril" 'lsp-clojure-introduce-let
+          "ris" 'lsp-clojure-inline-symbol
+          "ref" 'lsp-clojure-extract-function
+          "ram" 'lsp-clojure-add-missing-libspec))))
+
   (with-eval-after-load 'clojure-mode
     (clojure-snippets-initialize)
+    (spacemacs/set-leader-keys-for-major-mode 'clojure-mode "sjb" 'bb-jack-in)
+    (add-to-list 'clojure-align-cond-forms "array-map")
     (define-clojure-indent
       (prop/for-all 1)
       (async 1)
@@ -569,6 +595,8 @@
       (let-routes 1)
       (context 2)))
 
+
+
   ;; (add-hook 'cider-mode-hook
   ;;           (lambda ()
   ;;             (defun cider-eval-sexp-at-point-to-buffer ()
@@ -576,6 +604,16 @@
   ;;               (cider-pprint-eval-last-sexp t))
   ;;             (lispy-define-key lispy-mode-map "e" 'cider-eval-sexp-at-point)
   ;;             (lispy-define-key lispy-mode-map "E" 'cider-eval-sexp-at-point-to-buffer)))
+
+  (defun bb-jack-in ()
+    (interactive)
+    (start-process "bb" "bb-nrepl" "bb" "--nrepl-server")
+    (cider-connect '(:port 1667
+                           :host "localhost")))
+  (defun bb-connect ()
+    (interactive)
+    (cider-connect '(:port 1667
+                           :host "localhost")))
 
   (setq-default cljr-auto-sort-ns nil
                 cljr-auto-clean-ns nil
@@ -629,11 +667,6 @@
                               (cider--nrepl-pr-request-map))))
 
   (spacemacs/set-leader-keys-for-major-mode 'clojure-mode
-    "tkn" 'kaocha-runner-run-tests
-    "tkt" 'kaocha-runner-run-test-at-point
-    "tka" 'kaocha-runner-run-all-tests
-    "tks" 'kaocha-runner-show-warnings
-    "tkh" 'kaocha-runner-hide-windows
     "ta" 'cider-test-run-project-tests
     "tn" 'cider-test-run-ns-tests
     "tt" 'cider-test-run-test
@@ -649,6 +682,8 @@
     "oei" 'eval-sexp-fu-cider-eval-sexp-inner-list
     "oi" 'cider-inspect-last-result
     "os" 'cider-selector)
+
+
 
   (with-eval-after-load "cider-inspector"
     (define-key cider-inspector-mode-map
@@ -723,7 +758,40 @@
                    ,(pcase envrc--status
                       (`on 'envrc-mode-line-on-face)
                       (`error 'envrc-mode-line-error-face)
-                      (`none 'envrc-mode-line-none-face))))))
+                      (`none 'envrc-mode-line-none-face)))))
+
+  (use-package lsp-mode
+    :delight
+    '(:eval
+      (if lsp--buffer-workspaces
+          '(:propertize "👓" face 'envrc-mode-line-on-face)
+        '(:propertize "👓" face 'envrc-mode-line-none-face))))
+
+  ;; (dolist (m
+  ;;          (list clj-refactor-mode
+  ;;                which-key-mode
+  ;;                yas-minor-mode
+  ;;                company-mode
+  ;;                auto-fill-function
+  ;;                smartparens-mode
+  ;;                spacemacs-whitespace-cleanup-mode
+  ;;                aggressive-indent-mode
+  ;;                column-enforce-mode
+  ;;                all-the-icons-dired-mode
+  ;;                mixed-pitch-mode
+  ;;                flyspell-mode
+  ;;                flycheck-mode
+  ;;                subword-mode
+  ;;                company-mode
+  ;;                smartparens-mode
+  ;;                column-enforce-mode)
+  ;;          nil)
+  ;;   (eval-after-load 'm
+  ;;     (spacemacs|diminish m)))
+
+  (eval-after-load 'smartparens-mode
+    (spacemacs|diminish smartparens-mode))
+  )
 
 ;; Do not write anything past this comment. This is where Emacs will
 ;; auto-generate custom variable definitions.
@@ -738,29 +806,11 @@ This function is called at the very end of Spacemacs initialization."
    ;; If you edit it by hand, you could mess it up, so be careful.
    ;; Your init file should contain only one such instance.
    ;; If there is more than one, they won't work right.
-   '(evil-want-Y-yank-to-eol t)
-   '(org-agenda-files
-     '("~/org/journal/2020-08-10.org" "~/org/journal/2020-08-07.org" "~/org/journal/2020-08-06.org" "~/org/journal/2020-08-05.org" "~/org/journal/2020-08-04.org" "~/org/journal/2020-08-03.org" "~/org/journal/2020-08-02.org" "~/org/journal/2020-08-01.org" "~/org/journal/2020-07-31.org" "~/org/journal/2020-07-30.org" "~/org/journal/2020-07-29.org" "~/org/journal/2020-07-28.org" "~/org/journal/2020-07-27.org" "~/org/journal/2020-07-26.org" "~/org/journal/2020-07-24.org"))
+   '(highlight-parentheses-colors '("#2aa198" "#b58900" "#268bd2" "#6c71c4" "#859900"))
    '(package-selected-packages
-     '(all-the-icons-dired vterm-toggle multi-vterm conda lsp-ui envrc fira-code-mode unicode-fonts ucs-utils font-utils persistent-soft ligature ox-jira org-jira nix-mode helm-nixos-options company-nixos-options nixos-options lsp-julia julia-repl julia-mode evil-adjust kaocha-runner exwm xelb exotica-theme evil-org evil-magit magit git-commit with-editor eterm-256color xterm-color espresso-theme eshell-z eshell-prompt-extras esh-help emmet-mode elfeed-org elfeed-goodies ace-jump-mode noflet elfeed edbi epc ctable concurrent deferred ebuild-mode dracula-theme doom-themes dockerfile-mode docker transient tablist json-mode docker-tramp json-snatcher json-reformat django-theme desktop-environment darktooth-theme darkokai-theme darkmine-theme darkburn-theme dap-mode posframe lsp-treemacs bui lsp-mode dash-functional dante lcr dakrone-theme cython-mode cyberpunk-theme csv-mode company-web web-completion-data company-restclient restclient know-your-http-well ws-butler writeroom-mode winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package treemacs-projectile treemacs-persp treemacs-icons-dired treemacs-evil toc-org symon symbol-overlay string-inflection spaceline-all-the-icons restart-emacs request rainbow-delimiters popwin pcre2el password-generator paradox overseer org-superstar org-bullets open-junk-file nameless move-text macrostep lorem-ipsum link-hint indent-guide hybrid-mode hungry-delete hl-todo highlight-parentheses highlight-numbers highlight-indentation helm-xref helm-themes helm-swoop helm-purpose helm-projectile helm-mode-manager helm-make helm-ls-git helm-flx helm-descbinds helm-ag google-translate golden-ratio font-lock+ flycheck-package flycheck-elsa flx-ido fill-column-indicator fancy-battery eyebrowse expand-region evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-textobj-line evil-surround evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state evil-lion evil-indent-plus evil-iedit-state evil-goggles evil-exchange evil-escape evil-ediff evil-cleverparens evil-args evil-anzu emr elisp-slime-nav editorconfig dumb-jump dotenv-mode diminish devdocs define-word company-terraform company-statistics company-shell company-reftex company-quickhelp company-ghci company-ghc company-emoji company-cabal company-auctex company-ansible company-anaconda command-log-mode column-enforce-mode color-theme-sanityinc-tomorrow color-theme-sanityinc-solarized color-identifiers-mode cmm-mode clues-theme clojure-snippets clj-refactor clean-aindent-mode cider-eval-sexp-fu chocolate-theme cherry-blossom-theme centered-cursor-mode cargo busybee-theme bubbleberry-theme browse-at-remote blacken birds-of-paradise-plus-theme badwolf-theme auto-yasnippet auto-highlight-symbol auto-dictionary auto-compile auctex-latexmk attrap arduino-mode apropospriate-theme anti-zenburn-theme ansible-doc ansible ample-zen-theme ample-theme alert alect-themes aggressive-indent afternoon-theme adoc-mode ace-link ace-jump-helm-line ac-ispell))
+     '(helm-rg delight zenburn-theme zen-and-art-theme yasnippet-snippets yapfify yaml-mode ws-butler writeroom-mode wolfram-mode winum white-sand-theme which-key web-mode web-beautify vterm volatile-highlights vmd-mode vi-tilde-fringe vala-snippets vala-mode uuidgen use-package unicode-fonts undo-tree underwater-theme ujelly-theme twilight-theme twilight-bright-theme twilight-anti-bright-theme treemacs-projectile treemacs-persp treemacs-magit treemacs-icons-dired treemacs-evil toxi-theme toml-mode toc-org thrift terminal-here tao-theme tangotango-theme tango-plus-theme tango-2-theme tagedit systemd symon symbol-overlay sunny-day-theme sublime-themes subatomic256-theme subatomic-theme string-inflection stan-mode sqlup-mode sql-indent sphinx-doc spaceline-all-the-icons spacegray-theme soothe-theme solarized-theme soft-stone-theme soft-morning-theme soft-charcoal-theme smyx-theme smeargle slim-mode shell-pop seti-theme selectric-mode scss-mode scad-mode sass-mode ron-mode reverse-theme restclient-helm restart-emacs rebecca-theme ranger rainbow-mode rainbow-identifiers rainbow-delimiters railscasts-theme racer qml-mode pytest pyenv-mode py-isort purple-haze-theme pug-mode professional-theme prettier-js planet-theme pkgbuild-mode pippel pipenv pip-requirements phoenix-dark-pink-theme phoenix-dark-mono-theme pcre2el password-generator paradox ox-gfm overseer orgit organic-green-theme org-superstar org-rich-yank org-projectile org-present org-pomodoro org-mime org-journal org-fc org-download org-cliplink org-brain open-junk-file omtose-phellack-theme oldlace-theme occidental-theme obsidian-theme ob-restclient ob-http nodejs-repl noctilux-theme nix-mode naquadah-theme nameless mustang-theme multi-term move-text monokai-theme monochrome-theme molokai-theme moe-theme modus-vivendi-theme modus-operandi-theme mmm-mode mixed-pitch minimal-theme matlab-mode material-theme markdown-toc majapahit-theme magit-svn magit-section magit-gitflow madhat2r-theme macrostep lush-theme lsp-ui lsp-python-ms lsp-pyright lsp-origami lsp-latex lsp-julia lsp-haskell lorem-ipsum logcat livid-mode live-py-mode lispyville link-hint light-soap-theme ligature kubernetes-tramp kubernetes-evil kaolin-themes kaocha-runner julia-repl json-navigator js2-refactor js-doc jinja2-mode jbeans-theme jazz-theme ir-black-theme insert-shebang inkpot-theme inf-clojure indent-guide importmagic impatient-mode ibuffer-projectile hybrid-mode hungry-delete hoon-mode hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation heroku-theme hemisu-theme helpful helm-xref helm-themes helm-swoop helm-pydoc helm-purpose helm-projectile helm-org-rifle helm-org helm-nixos-options helm-mode-manager helm-make helm-lsp helm-ls-git helm-hoogle helm-gitignore helm-git-grep helm-flx helm-descbinds helm-css-scss helm-company helm-cider helm-c-yasnippet helm-ag hc-zenburn-theme haskell-snippets gruvbox-theme gruber-darker-theme grip-mode grandshell-theme gotham-theme google-translate golden-ratio gnuplot gitignore-templates github-search github-clone gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter-fringe+ gist gh-md gandalf-theme fuzzy framemove forge font-lock+ flyspell-correct-helm flycheck-rust flycheck-pos-tip flycheck-package flycheck-haskell flycheck-elsa flycheck-clj-kondo flycheck-bashate flx-ido flatui-theme flatland-theme fish-mode farmhouse-theme fancy-battery eziam-theme eyebrowse exwm expand-region exotica-theme evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-textobj-line evil-surround evil-org evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-magit evil-lisp-state evil-lion evil-indent-plus evil-iedit-state evil-goggles evil-exchange evil-escape evil-ediff evil-easymotion evil-cleverparens evil-args evil-anzu evil-adjust eterm-256color espresso-theme eshell-z eshell-prompt-extras esh-help envrc emr emojify emoji-cheat-sheet-plus emmet-mode elisp-slime-nav elfeed-org elfeed-goodies editorconfig edbi ebuild-mode dumb-jump dracula-theme dotenv-mode doom-themes dockerfile-mode docker django-theme dired-quick-sort diminish devdocs desktop-environment define-word darktooth-theme darkokai-theme darkmine-theme darkburn-theme dap-mode dante dakrone-theme cython-mode cyberpunk-theme csv-mode conda company-web company-terraform company-statistics company-shell company-restclient company-reftex company-quickhelp company-nixos-options company-emoji company-cabal company-auctex company-ansible company-anaconda command-log-mode column-enforce-mode color-theme-sanityinc-tomorrow color-theme-sanityinc-solarized color-identifiers-mode cmm-mode clues-theme clojure-snippets clj-refactor clean-aindent-mode cider-eval-sexp-fu chocolate-theme cherry-blossom-theme centered-cursor-mode cargo busybee-theme bubbleberry-theme browse-at-remote blacken birds-of-paradise-plus-theme badwolf-theme auto-yasnippet auto-highlight-symbol auto-dictionary auto-compile auctex-latexmk attrap arduino-mode apropospriate-theme anti-zenburn-theme ansible-doc ansible ample-zen-theme ample-theme all-the-icons-dired alect-themes aggressive-indent afternoon-theme adoc-mode ace-link ace-jump-helm-line ac-ispell))
    '(safe-local-variable-values
-     '((eval setq dockerfile-build-args
-             (list
-              (concat "USER="
-                      (user-login-name))))
-       (test-var + 1 2)
-       (dockerfile-image-name . "ata-devops-env")
-       (dockerfile-image-name . "airdex-infra-builder")
-       (dockerfile-image-name . "airdex-infra")
-       (projectile-project-type quote clojure-cli)
-       (projectile-project-type clojure-cli)
-       (projectile-project-type 'clojure-cli)
-       (lsp-file-watch-ignored "\\.git$" "resources" "target" "/dist$" "/log$")
-       (projectile-project-root . "~/projects/professional/VA-Fix/ui")
-       (projectile-project-root "~/projects/professional/VA-Fix/ui")
-       (lsp-file-watch-ignored "\\.git$" "resources/public/js$" "target$" "dist$" "log$")
-       (lsp-file-watch-ignored "[/\\\\]\\.git$" "[/\\\\]\\.hg$" "[/\\\\]\\.bzr$" "[/\\\\]_darcs$" "[/\\\\]\\.svn$" "[/\\\\]_FOSSIL_$" "[/\\\\]\\.idea$" "[/\\\\]\\.ensime_cache$" "[/\\\\]\\.eunit$" "[/\\\\]node_modules$" "[/\\\\]\\.fslckout$" "[/\\\\]\\.tox$" "[/\\\\]\\.stack-work$" "[/\\\\]\\.bloop$" "[/\\\\]\\.metals$" "[/\\\\]target$" "[/\\\\]resources/public/js$" "[/\\\\]\\.ccls-cache$" "[/\\\\]\\.deps$" "[/\\\\]build-aux$" "[/\\\\]autom4te.cache$" "[/\\\\]\\.reference$")
-       (cider-clojure-cli-global-options nil)
+     '((lsp-file-watch-ignored "\\.git$" "/resources$" "/\\.lsp$" "/diagrams" "/\\.clj-kondo$" "/node_modules$" "/target$" "/log$")
        (javascript-backend . tide)
        (javascript-backend . tern)
        (javascript-backend . lsp))))
@@ -769,5 +819,5 @@ This function is called at the very end of Spacemacs initialization."
    ;; If you edit it by hand, you could mess it up, so be careful.
    ;; Your init file should contain only one such instance.
    ;; If there is more than one, they won't work right.
-   )
+   '(default ((((class color) (min-colors 89)) (:foreground "#839496" :background "#002b36")))))
   )

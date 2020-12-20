@@ -16,9 +16,9 @@
                     (format "🍻[%s]" (parsed-modeline-info)))
                  face
                  ,(pcase (cider--modeline-info)
-                    ("not connected" '((t :inherit warning)))
-                    ((rx "cljs") '((t :inherit all-the-icons-cyan)))
-                    ((rx "clj") '((t :inherit success)))
+                    ("not connected" '((:inherit warning)))
+                    ((rx "cljs") '((:inherit all-the-icons-cyan)))
+                    ((rx "clj") '((:inherit success)))
                     (_ '((t :inherit error)))))))
 
 (setq cider-mode-line
