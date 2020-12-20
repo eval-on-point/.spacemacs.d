@@ -200,7 +200,7 @@
    dotspacemacs-mode-line-theme 'custom
    ;; dotspacemacs-mode-line-theme 'spacemacs
    dotspacemacs-default-font '("FiraCode Nerd Font"
-                               :size 8.0
+                               :size 12.0
                                :weight normal
                                :width normal)
    dotspacemacs-leader-key "SPC"
