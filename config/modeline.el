@@ -1,9 +1,9 @@
-(setq-default all-the-icons-fileicon-scale-factor 0.76)
-(setq-default all-the-icons-default-fileicon-adjust 0.08)
+;; (setq-default all-the-icons-fileicon-scale-factor 0.76)
+;; (setq-default all-the-icons-default-fileicon-adjust 0.08)
 
-(setq-default all-the-icons-octicon-scale-factor 0.80)
-(setq-default all-the-icons-alltheicon-scale-factor 0.72)
-(setq-default all-the-icons-faicon-scale-factor 0.90)
+;; (setq-default all-the-icons-octicon-scale-factor 0.80)
+;; (setq-default all-the-icons-alltheicon-scale-factor 0.72)
+;; (setq-default all-the-icons-faicon-scale-factor 0.90)
 
 (defun parsed-modeline-info ()
   (substring (nth 1 (split-string

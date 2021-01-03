@@ -33,10 +33,11 @@
      emoji
      (exwm :variables
            exwm-workspace-display-echo-area-timeout 10
+           exwm-floating-border-color "#586e75"
 
-           exwm-workspace-number
-           (string-to-number
-            (shell-command-to-string "xrandr|grep \" connected\"|wc -l"))
+           exwm-workspace-number 1
+           ;; (- (string-to-number
+           ;;     (shell-command-to-string "xrandr --listactivemonitors|wc -l")) 1)
 
            exwm-enable-systray t
            exwm-autostart-xdg-applications nil
@@ -44,6 +45,7 @@
            exwm-install-logind-lock-handler t
            ;; exwm-custom-init (lambda() (exwm/autostart-process "Dunst OSD" "dunst"))
            )
+     floobits
      git
      github
      haskell
@@ -72,6 +74,14 @@
           lsp-ui-doc-use-childframe t
           lsp-ui-sideline-show-code-actions nil
           lsp-ui-sideline-show-hover t
+          lsp-file-watch-ignored-directories '("[/\\\\]\\.git\\'"
+                                               "[/\\\\]\\.clj-kondo\\'"
+                                               "[/\\\\]\\.lsp\\'"
+                                               "[/\\\\]diagrams\\'"
+                                               "[/\\\\]log\\'"
+                                               "[/\\\\]node_modules\\'"
+                                               "[/\\\\]resources\\'"
+                                               "[/\\\\]target\\'")
           lsp-keymap-prefix "C-c C-l")
      major-modes
      (multiple-cursors :variables multiple-cursors-backend 'mc)
@@ -89,7 +99,9 @@
           org-journal-time-prefix "* "
           org-journal-file-format "%Y-%m-%d.org"
           org-journal-time-format "[%F %R]"
-          org-enable-github-support t)
+          org-enable-github-support t
+          org-babel-default-header-args:shell '((:results . ":output"))
+          org-src-tab-acts-natively nil) ; see https://github.com/syl20bnr/spacemacs/issues/13465
      ;; org-roam
      (python :variables python-backend 'lsp
              python-lsp-server 'pyright
@@ -149,7 +161,8 @@
      version-control
      xclipboard
      (yaml :variables yaml-enable-lsp t)
-     local-dev)
+     ;; local-dev
+     )
 
    dotspacemacs-additional-packages
    '((org-fc
@@ -158,7 +171,7 @@
                         :files (:defaults "awk" "demo.org")))
      (evil-adjust :location (recipe :fetcher github :repo "troyp/evil-adjust"))
      helm-rg
-   delight
+     delight
      kaocha-runner
      inf-clojure
      envrc
@@ -188,7 +201,7 @@
                                 (projects . 7)
                                 (recents . 5))
    dotspacemacs-startup-buffer-responsive t
-   dotspacemacs-scratch-mode 'emacs-lisp-mode
+   dotspacemacs-scratch-mode 'org-mode
    dotspacemacs-themes '(solarized-dark
                          solarized-light
                          doom-fairy-floss
@@ -198,9 +211,9 @@
                          doom-manegarm)
    dotspacemacs-colorize-cursor-according-to-state t
    dotspacemacs-mode-line-theme 'custom
-   ;; dotspacemacs-mode-line-theme 'spacemacs
+   ;; dotspacemacs-mode-line-theme 'all-the-icons
    dotspacemacs-default-font '("FiraCode Nerd Font"
-                               :size 12.0
+                               :size 8.0
                                :weight normal
                                :width normal)
    dotspacemacs-leader-key "SPC"
@@ -272,6 +285,8 @@
   ;;       ,@additional-segments))
   ;;   (setq-default mode-line-format '("%e" (:eval (spaceline-ml-main)))))
 
+  (setq vc-follow-symlinks t)
+
   (load "~/.spacemacs.d/config/modeline.el")
 
   (defun spaceline-custom-theme (&rest additional-segments)
@@ -321,7 +336,8 @@
         (column :priority 99)))
     (spaceline-toggle-buffer-size-off)
     (setq-default mode-line-format '("%e" (:eval (spaceline-ml-main))))
-    (spaceline-toggle-hud-off))
+    (spaceline-toggle-hud-off)
+    )
 
   (setq exwm-custom-init
         (lambda ()
@@ -348,7 +364,8 @@
           (eyebrowse-switch-to-window-config 1)
           (persp-switch "emacs")))
   (setq confirm-kill-processes nil)
-  (setq kill-buffer-query-functions nil))
+  (setq kill-buffer-query-functions nil)
+  (setq x-underline-at-descent-line t))
 
 (defun dotspacemacs/user-config ()
   (add-hook 'after-save-hook 'magit-after-save-refresh-status t)
@@ -378,7 +395,7 @@
   (setq-default which-key-idle-delay 2)
   (setq-default which-key-show-early-on-C-h t)
 
-  (spacemacs/toggle-evil-visual-mark-mode-on)
+  ;; (spacemacs/toggle-evil-visual-mark-mode-on)
   (setq-default evil-ex-search-vim-style-regexp t)
   (avy-setup-default)
   (defun switch-to-buffer--hack (orig-fun &rest args)
@@ -387,12 +404,31 @@
       (apply orig-fun args)))
 
   (define-key evil-normal-state-map (kbd "s") 'avy-goto-word-or-subword-1)
+  ;; (add-to-list 'avy-subword-extra-word-chars "")
+
   (define-key evil-normal-state-map (kbd "C-h") 'avy-pop-mark)
 
   (advice-add 'switch-to-buffer :around #'switch-to-buffer--hack)
 
+  (add-hook 'helm-mode-hook
+            (lambda ()
+              (add-to-list 'helm-completing-read-handlers-alist
+                           '(org-set-tags-command))))
+
   (defun spacemacs/home () nil)
   (add-hook 'org-mode-hook 'org-indent-mode)
+  (require 'org-tempo)
+  (setq org-structure-template-alist
+        (append org-structure-template-alist '(("el" . "src emacs-lisp")
+                                               ("sh" . "src shell")
+                                               ("clj" . "src clojure")
+                                               ("http" . "src http"))))
+  (spacemacs/set-leader-keys "pf" (lambda ()
+                                    (interactive)
+                                    (if (projectile-project-p)
+                                        (projectile-find-file)
+                                      (let ((default-directory "~"))
+                                        (helm-find nil)))))
   ;; (setq org-journal-find-file 'find-file)
   ;; (add-hook 'persp-created-functions
   ;;           (lambda (persp hash)
@@ -452,8 +488,9 @@
 
   (add-hook 'exwm-randr-screen-change-hook
             (lambda ()
-              (start-process-shell-command
-               "arandr" "--change")
+              (message "it ran")
+              ;; (start-process-shell-command
+              ;;  "autorandr" "--change")
               (let ((surplus (- (exwm-workspace--count)
                                 (string-to-number
                                  (shell-command-to-string
@@ -810,7 +847,8 @@ This function is called at the very end of Spacemacs initialization."
    '(package-selected-packages
      '(helm-rg delight zenburn-theme zen-and-art-theme yasnippet-snippets yapfify yaml-mode ws-butler writeroom-mode wolfram-mode winum white-sand-theme which-key web-mode web-beautify vterm volatile-highlights vmd-mode vi-tilde-fringe vala-snippets vala-mode uuidgen use-package unicode-fonts undo-tree underwater-theme ujelly-theme twilight-theme twilight-bright-theme twilight-anti-bright-theme treemacs-projectile treemacs-persp treemacs-magit treemacs-icons-dired treemacs-evil toxi-theme toml-mode toc-org thrift terminal-here tao-theme tangotango-theme tango-plus-theme tango-2-theme tagedit systemd symon symbol-overlay sunny-day-theme sublime-themes subatomic256-theme subatomic-theme string-inflection stan-mode sqlup-mode sql-indent sphinx-doc spaceline-all-the-icons spacegray-theme soothe-theme solarized-theme soft-stone-theme soft-morning-theme soft-charcoal-theme smyx-theme smeargle slim-mode shell-pop seti-theme selectric-mode scss-mode scad-mode sass-mode ron-mode reverse-theme restclient-helm restart-emacs rebecca-theme ranger rainbow-mode rainbow-identifiers rainbow-delimiters railscasts-theme racer qml-mode pytest pyenv-mode py-isort purple-haze-theme pug-mode professional-theme prettier-js planet-theme pkgbuild-mode pippel pipenv pip-requirements phoenix-dark-pink-theme phoenix-dark-mono-theme pcre2el password-generator paradox ox-gfm overseer orgit organic-green-theme org-superstar org-rich-yank org-projectile org-present org-pomodoro org-mime org-journal org-fc org-download org-cliplink org-brain open-junk-file omtose-phellack-theme oldlace-theme occidental-theme obsidian-theme ob-restclient ob-http nodejs-repl noctilux-theme nix-mode naquadah-theme nameless mustang-theme multi-term move-text monokai-theme monochrome-theme molokai-theme moe-theme modus-vivendi-theme modus-operandi-theme mmm-mode mixed-pitch minimal-theme matlab-mode material-theme markdown-toc majapahit-theme magit-svn magit-section magit-gitflow madhat2r-theme macrostep lush-theme lsp-ui lsp-python-ms lsp-pyright lsp-origami lsp-latex lsp-julia lsp-haskell lorem-ipsum logcat livid-mode live-py-mode lispyville link-hint light-soap-theme ligature kubernetes-tramp kubernetes-evil kaolin-themes kaocha-runner julia-repl json-navigator js2-refactor js-doc jinja2-mode jbeans-theme jazz-theme ir-black-theme insert-shebang inkpot-theme inf-clojure indent-guide importmagic impatient-mode ibuffer-projectile hybrid-mode hungry-delete hoon-mode hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation heroku-theme hemisu-theme helpful helm-xref helm-themes helm-swoop helm-pydoc helm-purpose helm-projectile helm-org-rifle helm-org helm-nixos-options helm-mode-manager helm-make helm-lsp helm-ls-git helm-hoogle helm-gitignore helm-git-grep helm-flx helm-descbinds helm-css-scss helm-company helm-cider helm-c-yasnippet helm-ag hc-zenburn-theme haskell-snippets gruvbox-theme gruber-darker-theme grip-mode grandshell-theme gotham-theme google-translate golden-ratio gnuplot gitignore-templates github-search github-clone gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter-fringe+ gist gh-md gandalf-theme fuzzy framemove forge font-lock+ flyspell-correct-helm flycheck-rust flycheck-pos-tip flycheck-package flycheck-haskell flycheck-elsa flycheck-clj-kondo flycheck-bashate flx-ido flatui-theme flatland-theme fish-mode farmhouse-theme fancy-battery eziam-theme eyebrowse exwm expand-region exotica-theme evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-textobj-line evil-surround evil-org evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-magit evil-lisp-state evil-lion evil-indent-plus evil-iedit-state evil-goggles evil-exchange evil-escape evil-ediff evil-easymotion evil-cleverparens evil-args evil-anzu evil-adjust eterm-256color espresso-theme eshell-z eshell-prompt-extras esh-help envrc emr emojify emoji-cheat-sheet-plus emmet-mode elisp-slime-nav elfeed-org elfeed-goodies editorconfig edbi ebuild-mode dumb-jump dracula-theme dotenv-mode doom-themes dockerfile-mode docker django-theme dired-quick-sort diminish devdocs desktop-environment define-word darktooth-theme darkokai-theme darkmine-theme darkburn-theme dap-mode dante dakrone-theme cython-mode cyberpunk-theme csv-mode conda company-web company-terraform company-statistics company-shell company-restclient company-reftex company-quickhelp company-nixos-options company-emoji company-cabal company-auctex company-ansible company-anaconda command-log-mode column-enforce-mode color-theme-sanityinc-tomorrow color-theme-sanityinc-solarized color-identifiers-mode cmm-mode clues-theme clojure-snippets clj-refactor clean-aindent-mode cider-eval-sexp-fu chocolate-theme cherry-blossom-theme centered-cursor-mode cargo busybee-theme bubbleberry-theme browse-at-remote blacken birds-of-paradise-plus-theme badwolf-theme auto-yasnippet auto-highlight-symbol auto-dictionary auto-compile auctex-latexmk attrap arduino-mode apropospriate-theme anti-zenburn-theme ansible-doc ansible ample-zen-theme ample-theme all-the-icons-dired alect-themes aggressive-indent afternoon-theme adoc-mode ace-link ace-jump-helm-line ac-ispell))
    '(safe-local-variable-values
-     '((lsp-file-watch-ignored "\\.git$" "/resources$" "/\\.lsp$" "/diagrams" "/\\.clj-kondo$" "/node_modules$" "/target$" "/log$")
+     '((lsp-file-watch-ignored-directories "[/\\\\]\\.git\\'" "[/\\\\]\\.clj-kondo\\'" "[/\\\\]\\.lsp\\'" "[/\\\\]diagrams\\'" "[/\\\\]log\\'" "[/\\\\]node_modules\\'" "[/\\\\]resources\\'" "[/\\\\]target\\'")
+       (lsp-file-watch-ignored "\\.git$" "/resources$" "/\\.lsp$" "/diagrams" "/\\.clj-kondo$" "/node_modules$" "/target$" "/log$")
        (javascript-backend . tide)
        (javascript-backend . tern)
        (javascript-backend . lsp))))

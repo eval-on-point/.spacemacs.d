@@ -35,7 +35,7 @@
   :custom
   (mouse-autoselect-window t)
   (focus-follows-mouse t)
-  (exwm-randr-workspace-monitor-plist '(0 "DP3" 1 "DP1" 2 "eDP1")))
+  (exwm-randr-workspace-monitor-plist '(0 "DP-2" 1 "DP-0")))
 
 (use-package window-purpose
   :config
