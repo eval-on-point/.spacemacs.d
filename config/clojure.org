@@ -1,0 +1,234 @@
+#+TITLE: Clojure Spacemacs Config
+
+Note: Since clojure-lsp integrates with clj-kondo by default, we do not need to enable the kondo linter explicitly
+despite what the Spacemacs layer manual tells us.
+
+* General configuration
+#+begin_src emacs-lisp :tangle .tangle/layers/clojure.el
+  (dolist (layer '((clojure :variables
+                            clojure-backend 'lsp
+                            clojure-enable-sayid nil
+                            clojure-enable-fancify-symbols t
+                            clojure-align-forms-automatically t
+                            clojure-indent-style 'align-arguments
+                            clojure-align-reader-conditionals t
+                            clojure--beginning-of-reader-conditional-regexp "\\[")))
+    (add-to-list 'dotspacemacs-configuration-layers layer))
+
+  (dolist (package '(inf-clojure clojure-snippets))
+    (add-to-list 'dotspacemacs-additional-packages package))
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/clojure.el
+  (setq cider-repl-display-help-banner nil
+        cider-font-lock-dynamically '(macro core function var)
+        nrepl-sync-request-timeout 120
+        cider-stacktrace-default-filters '(project)
+        cider-jdk-src-paths nil
+        cider-ns-save-files-on-refresh t)
+
+  (eval-after-load 'cider
+    '(progn
+       (cider-add-to-alist 'cider-jack-in-dependencies
+                           "org.tcrawley/dynapath" "0.2.5")
+       (cider-add-to-alist 'cider-jack-in-dependencies
+                           "com.cemerick/pomegranate" "0.4.0")))
+
+  (setq cider-repl-pop-to-buffer-on-connect nil)
+  (setq cider-allow-jack-in-without-project t)
+  ;; (setq cider-clojure-cli-global-options "-A:scratch")
+
+  (add-hook 'cider-inspector-mode-hook #'spacemacs/toggle-truncate-lines-on)
+  (add-hook 'cider-repl-mode-hook #'cider-company-enable-fuzzy-completion)
+  (add-hook 'cider-mode-hook #'cider-company-enable-fuzzy-completion)
+
+  (with-eval-after-load 'clojure-mode
+    (clojure-snippets-initialize)
+    (add-to-list 'clojure-align-cond-forms "array-map")
+    (define-clojure-indent
+      (prop/for-all 1)
+      (async 1)
+      (rf/reg-event-fx 'defun)
+      (rf/reg-event-db 'defun)
+      (reg-event-db 'defun)
+      (rf/reg-sub 'defun)
+      (fn-traced 1)
+      (defroutes 'defun)
+      (cond-> 1)
+      (cond->> 1)
+      (as-> 2)
+      (as->> 2)
+      (tp/it-> 1)
+      (GET 2)
+      (POST 2)
+      (PUT 2)
+      (DELETE 2)
+      (HEAD 2)
+      (ANY 2)
+      (OPTIONS 2)
+      (PATCH 2)
+      (rfn 2)
+      (let-routes 1)
+      (context 2)
+      (describe 1)
+      (beforeEach 1)))
+
+  ;; (add-hook 'cider-mode-hook
+  ;;           (lambda ()
+  ;;             (defun cider-eval-sexp-at-point-to-buffer ()
+  ;;               (interactive)
+  ;;               (cider-pprint-eval-last-sexp t))
+  ;;             (lispy-define-key lispy-mode-map "e" 'cider-eval-sexp-at-point)
+  ;;             (lispy-define-key lispy-mode-map "E" 'cider-eval-sexp-at-point-to-buffer)))
+
+  (defun lispy-eval-clojure (str)
+    (save-mark-and-excursion
+      (cond
+       ((region-active-p)
+        (when (= (point) (region-beginning))
+          (exchange-point-and-mark)))
+       ((lispy-right-p))
+       (t (lispy-forward 1)))
+      (cider-eval-last-sexp)))
+
+  (defun cider--guess-evaluation-context ()
+    "returns list of let-binding strings from the inside out, without closing parens
+       \"(let [...]\""
+    (save-excursion
+      (let ((res ()))
+        (condition-case er
+            (while t
+              (backward-up-list)
+              (when (looking-at (rx "(" (or "when-let" "if-let" "let") (opt "*")
+                                    symbol-end (* space)
+                                    (group "["))) ;; binding vector
+                (let ((beg (match-beginning 0))
+                      (end (save-excursion
+                             (goto-char (match-beginning 1))
+                             (forward-sexp 1)
+                             (point))))
+                  (push (buffer-substring-no-properties beg end) res))))
+          (scan-error res)))))
+
+  (defun cider-eval-dwim ()
+    (interactive)
+    (let ((ctx (cider--guess-evaluation-context))
+          (bounds (cider-sexp-at-point 'bounds)))
+      (cider-interactive-eval (concat (apply #'concat ctx)
+                                      (buffer-substring-no-properties (car bounds) (cadr bounds))
+                                      (make-string (length ctx) ?\)))
+                              nil bounds
+                              (cider--nrepl-pr-request-map))))
+
+  (spacemacs/set-leader-keys-for-major-mode 'clojure-mode
+    "ta" 'cider-test-run-project-tests
+    "tn" 'cider-test-run-ns-tests
+    "tt" 'cider-test-run-test
+    "oe;"
+    (lambda ()
+      (interactive)
+      (evil-insert-state)
+      (forward-char)
+      (newline)
+      (cider-pprint-eval-last-sexp-to-comment)
+      (evil-normal-state))
+    "oec" 'cider-eval-dwim
+    "oei" 'eval-sexp-fu-cider-eval-sexp-inner-list
+    "oi" 'cider-inspect-last-result
+    "os" 'cider-selector)
+
+  (with-eval-after-load "cider-inspector"
+    (define-key cider-inspector-mode-map
+      (kbd "f") 'ace-link-cider-inspector))
+
+  ;; for cljs DAP debugger
+  ;; see: https://emacs-lsp.github.io/lsp-mode/tutorials/debugging-clojure-script/
+  (with-eval-after-load 'dap-mode
+    (require 'dap-chrome))
+#+end_src
+
+* LSP
+
+#+begin_src emacs-lisp :tangle .tangle/user-init/clojure.el
+  ;; (add-hook 'lsp-mode
+  ;;           (lambda ()
+  ;;             (dolist (regexp '("[/\\\\]\\.clj-kondo\\'"
+  ;;                               "[/\\\\]node_modules\\'"
+  ;;                               "[/\\\\]resources\\'"
+  ;;                               "[/\\\\]target\\'"))
+  ;;               (add-to-list 'lsp-file-watch-ignored-directories regexp))))
+#+end_src
+
+* clj-refactor
+#+begin_src emacs-lisp :tangle .tangle/user-init/clojure.el
+  (setq-default clojure-enable-clj-refactor t
+                cljr-auto-sort-ns nil
+                cljr-auto-clean-ns nil
+                cljr-favor-prefix-notation t
+                cljr-warn-on-eval nil
+                cljr-hotload-dependencies t)
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/clojure.el
+  (with-eval-after-load 'clj-refactor
+    (lispy-define-key lispy-mode-map "/" 'lispy-splice
+      :inserter 'cljr-slash)
+
+    (setq cljr-magic-requires-namespaces
+          '(("csv" . "clojure.data.csv")
+            ("gdom" . "goog.dom")
+            ("ig" . "integrant.core")
+            ("io" . "clojure.java.io")
+            ("log" . "taoensso.timbre")
+            ("json" . "cheshire.core")
+            ("r" . "reagent.core")
+            ("rf" . "re-frame.core")
+            ("set" . "clojure.set")
+            ("string" . "clojure.string")
+            ("t" . "clojure.test")
+            ("walk" . "clojure.walk")
+            ("zip" . "clojure.zip"))))
+
+  (spacemacs|use-package-add-hook clj-refactor
+    :post-config
+    (spacemacs|forall-clojure-modes m
+      (dolist (r cljr--all-helpers)
+        (let* ((binding (car r))
+               (func (cadr r)))
+          (unless (and (eq clojure-backend 'lsp)
+                       (member binding '("cn" "el" "ml" "il" "is" "ef" "am")))
+            (when (string-prefix-p "r" binding) (store-substring binding 0 ?R))
+            (when (not (string-prefix-p "hydra" (symbol-name func)))
+              (spacemacs/set-leader-keys-for-major-mode m
+                (concat "r" binding) func)))))
+      (when (eq clojure-backend 'lsp)
+        (spacemacs/set-leader-keys-for-major-mode m
+          "rcn" 'lsp-clojure-clean-ns
+          "rel" 'lsp-clojure-expand-let
+          "rml" 'lsp-clojure-move-to-let
+          "ril" 'lsp-clojure-introduce-let
+          "ris" 'lsp-clojure-inline-symbol
+          "ref" 'lsp-clojure-extract-function
+          "ram" 'lsp-clojure-add-missing-libspec))))
+#+end_src
+
+* Babashka
+I have been using the ~.bb~ file extension for Babashka scripts to help make editor integration easier. I don't want to
+spend too much time on writing code around this before [[https://github.com/clojure-emacs/cider/issues/2947][this issue in Cider for establishing support]] is resolved.
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/clojure.el
+  (add-to-list 'auto-mode-alist '("\\.bb\\'" . clojure-mode))
+
+  (with-eval-after-load 'clojure-mode
+    (defun bb-jack-in ()
+      (interactive)
+      (start-process "bb" "bb-nrepl" "bb" "--nrepl-server" "1667")
+      (sleep-for 0.2)
+      (cider-connect '(:port 1667 :host "localhost")))
+
+    (defun bb-connect ()
+      (interactive)
+      (cider-connect '(:port 1667 :host "localhost")))
+
+    (spacemacs/set-leader-keys-for-major-mode 'clojure-mode "sjb" 'bb-jack-in))
+#+end_src

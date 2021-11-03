@@ -1,2 +1,5 @@
 .spacemacs.env
-/layouts/persp-auto-save*
+layouts/persp-auto-save*
+custom.el
+config/.tangle/
+*.gpg

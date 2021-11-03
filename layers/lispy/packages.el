@@ -1,6 +1,5 @@
 (defconst lispy-packages
   '(lispy
-  ;  (lispy :location (recipe :fetcher local))
     lispyville))
 
 (defun lispy/init-lispyville ()
@@ -36,10 +35,19 @@
     (lispy-compat '(edebug cider magit-blame-mode))
     (lispy-eval-display-style 'overlay)
     :config
+    (defun lispy-cider-define-key (k f)
+      (lispy-define-key lispy-mode-map-special k (lookup-key lispy-mode-map-special k)
+        :override `(cond ((bound-and-true-p cider-mode)
+                          (save-excursion
+                            (when (looking-at lispy-left)
+                              (lispy-different))
+                            (,f))))))
     (progn
       (define-key lispy-mode-map-lispy (kbd "<M-return>") nil)
       (define-key lispy-mode-map-evilcp (kbd "<M-return>") nil)
       (define-key lispy-mode-map-lispy (kbd "M-RET") nil)
+      ;; (lispy-cider-define-key "e" 'cider-eval-last-sexp)
+      ;; (lispy-cider-define-key "E" 'cider-pprint-eval-last-sexp-to-comment)
       (evil-define-key 'insert lispy-mode-map
         (kbd "/")   'special-lispy-splice
         (kbd ")")   'lispy-right-nostring

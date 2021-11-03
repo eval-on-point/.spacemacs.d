@@ -1,8 +1,0 @@
-#+TITLE: My Spacemacs Configuration
-#+AUTHOR: Mitchell Horning
-
-* LSP-mode
-
-* EXWM
-
-* vterm

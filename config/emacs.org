@@ -1,0 +1,82 @@
+* emacs config
+  #+begin_src emacs-lisp :tangle .tangle/layers/emacs.el
+    (dolist (layer '((helm :variables
+                           history-delete-duplicates t
+                           helm-enable-auto-resize t
+                           hybrid-style-enable-hjkl-bindings t
+                           helm-mini-default-sources '(helm-source-buffers-list
+                                                       helm-source-buffer-not-found)
+                           helm-buffer-max-length nil)
+                     helpful
+                     (restclient :variables restclient-use-org t)
+                     (spacemacs-layouts :variables
+                                        spacemacs-layouts-directory "/home/m/.spacemacs.d/layouts/"
+                                        spacemacs-layouts-restrict-spc-tab t
+                                        persp-autokill-buffer-on-remove 'kill-weak)
+                     (spacemacs-purpose :variables
+                                        purpose-layout-dirs '("/home/m/.spacemacs.d/purpose-layouts/"))
+                     themes-megapack
+                     (treemacs :variables
+                               treemacs-use-scope-type 'Perspectives
+                               treemacs-use-follow-mode nil
+                               treemacs-use-filewatch-mode t
+                               treemacs-use-git-mode 'extended
+                               treemacs-use-icons-dired nil)))
+      (add-to-list 'dotspacemacs-configuration-layers layer))
+
+      (add-to-list 'dotspacemacs-additional-packages 'mixed-pitch)
+  #+end_src
+
+  #+begin_src emacs-lisp :tangle .tangle/init/emacs.el
+    (setq-default
+     dotspacemacs-emacs-leader-key "M-SPC"  ; avoid conflict with lispy-mark
+     dotspacemacs-major-mode-emacs-leader-key "s-,"
+     dotspacemacs-line-numbers '(:disabled-for-modes text-mode)
+     dotspacemacs-scratch-buffer-persistent t
+     dotspacemacs-scratch-mode 'org-mode)
+  #+end_src
+
+  #+begin_src emacs-lisp :tangle .tangle/user-init/emacs.el
+    ;; prompt for keys in minibuffer
+    ;; https://www.fluidkeys.com/tweak-gpg-2.1.11/
+    (setq epa-pinentry-mode 'loopback)
+
+    ;; https://github.com/syl20bnr/spacemacs/issues/1639
+    (customize-set-variable 'custom-file
+                            (file-truename
+                             (concat dotspacemacs-directory "custom.el"))
+                            "Separate custom file")
+    (load custom-file)
+
+    (setq-default ace-window-display-mode t
+                  browse-url-generic-program "qutebrowser"
+                  confirm-kill-processes nil
+                  fill-column 80
+                  kill-buffer-query-functions nil
+                  which-key-idle-delay 2
+                  which-key-show-early-on-C-h t)
+
+    (defun add-hooks (hooks functions)
+      (cond ((not functions) nil)
+            ((consp functions)
+             (dolist (fun functions)
+               (add-hooks hooks fun)))
+            (t
+             (dolist (hook hooks)
+               (add-hook hook functions)))))
+
+    (add-hooks '(org-mode-hook
+                 markdown-mode-hook)
+               #'mixed-pitch-mode)
+
+    (add-hooks '(prog-mode-hook text-mode-hook) #'auto-fill-mode)
+    (add-hook 'prog-mode-hook #'column-enforce-mode)
+
+
+    ;; https://emacs.stackexchange.com/questions/21149/let-switch-to-buffer-to-already-open-buffer-switch-to-that-window-rather-than-o
+    (defun switch-to-buffer--hack (orig-fun &rest args)
+      (if-let ((win (get-buffer-window (car args))))
+          (select-window win)
+        (apply orig-fun args)))
+    (advice-add 'switch-to-buffer :around #'switch-to-buffer--hack)
+  #+end_src

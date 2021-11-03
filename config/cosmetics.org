@@ -1,0 +1,54 @@
+#+begin_src emacs-lisp :tangle .tangle/layers/cosmetics.el
+  (dolist (layer '(emoji
+                   (colors :variables colors-colorize-identifiers 'variables)
+                   (unicode-fonts :variables
+                                  unicode-fonts-enable-ligatures t
+                                  unicode-fonts-ligature-modes '(prog-mode vterm-mode)
+                                  unicode-fonts-ligature-set
+                                  '("www" "**" "***" "/*" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
+                                    ":::" ":=" "!!" "!=" "!==" "-}" "----" "-->" "->" "->>"
+                                    "-<" "-<<" "-~" "#{" "#[" "#(" "#?" "#_"
+                                    "#_(" ".-" ".=" ".." "..<" "..." "?=" "??" ";;" "/*" "/**"
+                                    "/=" "/==" "/>" "//" "///" "&&" "||" "||=" "|=" "|>" "^=" "$>"
+                                    "++" "+++" "+>" "=:=" "==" "===" "==>" "=>" "=>>" "<="
+                                    "=<<" "=/=" ">-" ">=" ">=>" ">>" ">>-" ">>=" ">>>" "<*"
+                                    "<*>" "<|" "<|>" "<$" "<$>" "<!--" "<-" "<--" "<->" "<+"
+                                    "<+>" "<=" "<==" "<=>" "<=<" "<>" "<<" "<<-" "<<=" "<<<"
+                                    "<~" "<~~" "</" "</>" "~@" "~-" "~>" "~~" "~~>" "%%"))))
+    (add-to-list 'dotspacemacs-configuration-layers layer))
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/init/cosmetics.el
+  (setq-default dotspacemacs-themes
+                '(solarized-dark
+                  solarized-light
+                  doom-fairy-floss
+                  doom-solarized-light
+                  doom-laserwave
+                  doom-city-lights
+                  doom-manegarm)
+                dotspacemacs-default-font '("FiraCode Nerd Font"
+                                            :size 8.0
+                                            ;; :size 20
+                                            :weight normal
+                                            :width normal)
+                dotspacemacs-startup-banner nil
+                dotspacemacs-show-transient-state-title t
+                dotspacemacs-show-transient-state-color-guide t
+                dotspacemacs-mode-line-unicode-symbols t
+                dotspacemacs-active-transparency 90
+                dotspacemacs-inactive-transparency 90
+                dotspacemacs-smooth-scrolling t
+                dotspacemacs-highlight-delimiters 'all)
+
+  (scroll-bar-mode 1)
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/cosmetics.el
+  ;; (use-package lsp-mode
+  ;;   :delight
+  ;;   '(:eval
+  ;;     (if lsp--buffer-workspaces
+  ;;         '(:propertize "👓" face envrc-mode-line-on-face)
+  ;;       '(:propertize "👓" face envrc-mode-line-none-face))))
+#+end_src

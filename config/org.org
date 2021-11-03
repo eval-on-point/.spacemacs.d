@@ -1,0 +1,210 @@
+#+begin_src emacs-lisp :tangle .tangle/layers/org.el
+  (dolist (layer '((org :variables
+                        org-startup-folded nil
+                        org-agenda-files '("~/org-gcal/schedule.org"
+                                           "~/org")
+                        org-agenda-file-regexp "\\`[^.].*\\.org$\\'"
+                        org-complete-tags-always-offer-all-agenda-tags t
+                        org-confirm-babel-evaluate nil
+                        ;; org-enable-org-journal-support t
+                        ;; org-journal-dir "~/org/journal/"
+                        ;; org-journal-date-prefix "#+TITLE: "
+                        ;; org-journal-time-prefix "* "
+                        ;; org-journal-file-format "%Y-%m-%d.org"
+                        ;; org-journal-time-format "[%F %R]"
+                        ;; org-enable-github-support t
+                        org-enable-notifications t
+                        org-start-notification-daemon-on-startup t
+                        org-babel-default-header-args:shell '((:results . ":output"))
+                        org-src-tab-acts-natively nil
+                        org-src-window-setup 'current-window)))
+    (add-to-list 'dotspacemacs-configuration-layers layer))
+
+  (dolist (package '(envrc
+                     org-gcal
+                     org-roam
+                     org-wild-notifier))
+      (add-to-list 'dotspacemacs-additional-packages package))
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/org.el
+  (add-hook 'helm-mode-hook
+            (lambda ()
+              (add-to-list 'helm-completing-read-handlers-alist
+                           '(org-set-tags-command))))
+
+  (org-clock-persistence-insinuate)
+  (add-hook 'org-mode-hook 'org-indent-mode)
+
+  (defun my-org-capture-place-template-dont-delete-windows (oldfun args)
+    (cl-letf (((symbol-function 'delete-other-windows) 'ignore))
+      (apply oldfun args)))
+
+  (defun org-journal-find-location ()
+    ;; Open today's journal, but specify a non-nil prefix argument in order to
+    ;; inhibit inserting the heading; org-capture will insert the heading.
+    (org-journal-new-entry t)
+    ;; (unless (eq org-journal-file-type 'daily)
+    ;;   (org-narrow-to-subtree))
+    ;; (let* ((the-buffer (find-file-noselect (org-journal--get-entry-path))))
+    ;;   (with-current-buffer the-buffer
+    ;;     (goto-char (point-max))
+    ;;     (insert "** "))
+    ;;   the-buffer)
+    )
+
+  (add-hook 'org-capture-mode-hook 'evil-insert-state)
+
+  (require 'org-protocol)
+  (setq org-capture-templates '(("j" "journal" plain (function org-journal-find-location)
+                                 "** %?"
+                                 :clock-in t :clock-resume t)
+                                ("t" "todo" entry (file "~/org/refile.org")
+                                 "* TODO %?"
+                                 :clock-in t :clock-resume t)
+                                ("n" "note" entry (file "~/org/refile.org")
+                                 "* %? :note:"
+                                 :clock-in t :clock-resume t)
+                                ("a" "Anki basic" entry (file+headline "~/org/flashcards.org" "Triage")
+                                 "* Item\n:PROPERTIES:\n:ANKI_NOTE_TYPE: Basic\n:ANKI_DECK: Mega\n:END:\n** Front\n%^{FRONT}\n** Back\n%^{BACK}\n"
+                                 :immediate-finish t)
+                                ("r" "Anki basic + reverse" entry (file+headline "~/org/flashcards.org" "Triage")
+                                 "* Item\n:PROPERTIES:\n:ANKI_NOTE_TYPE: Basic (and reversed card)\n:ANKI_DECK: Mega\n:END:\n** Front\n%^{FRONT}\n** Back\n%^{BACK}\n"
+                                 :immediate-finish t)
+                                ("w" "org-protocol" entry (file "~/org/refile.org")
+                                 "* %:annotation\n%u\n%i"
+                                 :immediate-finish t)))
+
+  (with-eval-after-load "org-capture"
+    (advice-add 'org-capture-place-template
+                :around 'my-org-capture-place-template-dont-delete-windows))
+
+  (require 'org-tempo)
+  (setq org-structure-template-alist
+        (append org-structure-template-alist '(("el" . "src emacs-lisp")
+                                               ("sh" . "src shell")
+                                               ("clj" . "src clojure")
+                                               ("http" . "src http"))))
+  (spacemacs/set-leader-keys "pf" (lambda ()
+                                    (interactive)
+                                    (if (projectile-project-p)
+                                        (projectile-find-file)
+                                      (let ((default-directory "~"))
+                                        (helm-find nil)))))
+  (setq org-journal-find-file 'find-file)
+  ;; (add-hook 'persp-created-functions
+  ;;           (lambda (persp hash)
+  ;;             (spacemacs-buffer/goto-buffer)
+  ;;             (org-journal-new-entry t)
+  ;;             (persp-add-buffer
+  ;;              (get-buffer (format-time-string "%Y-%m-%d.org"))
+  ;;              persp)))
+
+  ;; (add-hook 'org-journal-after-header-create-hook
+  ;;           (lambda ()
+  ;;             (insert "\n\n* "
+  ;;                     "Previous journal entry: "
+  ;;                     "[[" (car (reverse (org-journal-list-files))) "]"
+  ;;                     "[" (mapconcat 'int-to-string
+  ;;                                    (car (reverse (org-journal-list-dates)))
+  ;;                                    "-")
+  ;;                     "]]")
+  ;;             (org-agenda-file-to-front)
+  ;;             (save-buffer)))
+
+  ;; (add-hook 'org-journal-after-entry-create-hook
+  ;;           (lambda ()
+  ;;             (save-excursion
+  ;;               (beginning-of-line)
+  ;;               (insert "\n"))
+  ;;             (save-buffer)))
+  (setq browse-url-mosaic-program
+        nil)
+  ;;
+  ;;  (with-eval-after-load 'org
+  ;;    (load-file "~/.spacemacs.d/private/org-habit-plus/org-habit-plus.el")
+  ;;    (add-to-list 'org-modules 'org-habit-plus t))
+
+  ;; (add-hook 'org-mode-hook #'mixed-pitch-mode)
+
+  (defun org-gcal-flush-and-refetch ()
+    (interactive)
+  ;;; Commentary:
+    "Fix duplicates displayed in org gcal.
+  Delete agenda files, kill agenda buffers, remove token files, clear tokens in
+  Emacs, re-fetch all information with org-gcal."
+  ;;; Code:
+    ;; Time stamp
+    (defvar ogf-dtstamp)
+    (setq ogf-dtstamp (format-time-string "%Y%m%d_%H%M"))
+
+    ;; Find agenda files
+    (defvar ogf-agendapath "~/org")
+    (defvar ogf-agendafiles)
+    (setq ogf-agendafiles (directory-files ogf-agendapath nil ".org$"))
+
+    ;; Set trash folder
+    (defvar ogf-trashfolder)
+    (setq ogf-trashfolder (concat "~/.Trash/org-gcal-fix_" ogf-dtstamp "/"))
+    (make-directory ogf-trashfolder)
+
+    ;; Clean up loop:
+    (dolist (element ogf-agendafiles)
+      ;; 1) Move agenda files to trash (don't really delete)
+      (rename-file
+       (concat ogf-agendapath "/" element)
+       (concat ogf-trashfolder element))
+      ;; 2) Close buffer
+      (when (get-buffer element)
+        (kill-buffer element))
+      )
+
+    ;; Close agenda buffer
+    (when (get-buffer "*Org Agenda*")
+      (kill-buffer "*Org Agenda*"))
+
+    ;; Remove token file
+    (rename-file
+     "~/.emacs.d/org-gcal/.org-gcal-token"
+     (concat ogf-trashfolder "/org-gcal-token"))
+
+    ;; Clear sync tokens in Emacs
+    (org-gcal-sync-tokens-clear)
+    (unintern 'org-gcal-token-plist)
+
+    ;; Set the browser function to external browser. This is required for
+    ;; obtaining a token (see next step)
+    (defvar ogf-current-browser browse-url-browser-function)
+    (setq browse-url-browser-function 'browse-url-generic)
+
+    ;; Refetch calendar (this should prompt for obtaining a token again)
+    (org-gcal-fetch)
+
+    ;; Restore browser function
+    (setq browse-url-browser-function 'ogf-current-browser))
+
+  (use-package org-wild-notifier
+    :custom
+    (alert-default-style 'libnotify)
+    (alert-fade-time 120)
+    (org-wild-notifier-alert-time '(10 5 0))
+    (org-wild-notifier-keyword-whitelist nil))
+
+  (use-package org-gcal
+    :ensure t
+    :custom
+    (org-gcal-fetch-file-alist '(("mhorning@ata-llc.com" .
+                                  "~/org-gcal/schedule.org")))
+    (org-gcal-recurring-events-mode 'nested)
+    (org-gcal-remove-api-cancelled-events t)
+    (org-gcal-recurring-events-mode 'top-level)
+    (org-gcal-auto-archive t)
+    :init
+    (load-library "~/.spacemacs.d/config/gcal-secret.el.gpg")
+    :config
+    (org-gcal-fetch)
+    (add-hook 'org-agenda-mode-hook #'org-gcal-fetch)
+    ;;  https://www.masteringemacs.org/article/keeping-secrets-in-emacs-gnupg-auth-sources
+    ;; should use this ^
+    )
+#+end_src

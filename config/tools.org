@@ -1,0 +1,39 @@
+#+TITLE: Emacs Tooling Config
+
+Configuration for Emacs tool integrations (such as CLIs). 
+
+* General configuration
+  #+begin_src emacs-lisp :tangle .tangle/layers/tools.el
+    (dolist (layer '(git
+                     github
+                     kubernetes
+                     (shell :variables
+                            shell-default-shell 'vterm
+                            vterm-buffer-name-string "T:%s"
+                            vterm-always-compile-module t)
+                     version-control))
+      (add-to-list 'dotspacemacs-configuration-layers layer))
+  #+end_src
+
+  #+begin_src emacs-lisp :tangle .tangle/user-config/tools.el
+    (setq-default vc-follow-symlinks t)
+    (add-hook 'after-save-hook 'magit-after-save-refresh-status t)
+    (envrc-global-mode)
+  #+end_src
+
+* Terminal
+  #+begin_src emacs-lisp :tangle .tangle/user-config/tools.el
+    (with-eval-after-load 'vterm
+      (evil-set-initial-state 'vterm-mode 'emacs)
+      (add-hook 'vterm-mode-hook
+                (lambda ()
+                  (add-hook 'evil-insert-state-entry-hook
+                            'evil-emacs-state
+                            nil t)))
+      (evil-define-key 'emacs vterm-mode-map
+        (kbd "C-z") 'vterm-send-C-z)
+      (add-to-list 'vterm-eval-cmds
+                   '("find-files"
+                     (lambda (&rest ARGS)
+                       (mapcar 'find-file ARGS)))))
+  #+end_src

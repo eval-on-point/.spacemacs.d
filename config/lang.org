@@ -1,0 +1,147 @@
+* Cross-cutting concerns
+   - [[file:~/.emacs.d/layers/+completion/auto-completion/README.org::*Key bindings][auto-completion-idle-delay 0.0 gives optimal results with lsp mode]]
+   - [[file:~/.emacs.d/layers/+completion/auto-completion/README.org::*Key bindings][auto-completion-minimum-prefix-length gives optimal results with lsp mode]]
+  #+begin_src emacs-lisp :tangle .tangle/layers/langs.el
+    (dolist (layer '((auto-completion :variables
+                                      auto-completion-return-key-behavior nil
+                                      auto-completion-tab-key-behavior nil
+                                      auto-completion-idle-delay 0.0
+                                      auto-completion-minimum-prefix-length 1
+                                      auto-completion-use-company-box t
+                                      auto-completion-enable-help-tooltip t
+                                      auto-completion-enable-sort-by-usage t)
+                     (dap :variables
+                          dap-auto-configure-features '(sessions
+                                                        locals
+                                                        breakpoints
+                                                        expressions
+                                                        tooltip)
+                          dap-enable-ui-controls nil)
+                     (lsp :variables
+                          lsp-enable-indentation nil
+                          lsp-enable-symbol-highlighting t
+                          lsp-remap-xref-keybindings t
+                          lsp-use-lsp-ui t
+                          lsp-ui-sideline-enable nil
+                          lsp-ui-doc-enable t
+                          lsp-ui-doc-position 'bottom
+                          lsp-ui-doc-alignment 'window
+                          lsp-ui-doc-use-childframe t
+                          ;; lsp-ui-doc-use-webkit t
+                          lsp-ui-doc-show-with-cursor nil
+                          lsp-ui-doc-delay t
+                          lsp-ui-sideline-show-code-actions nil
+                          lsp-ui-sideline-show-hover t
+                          lsp-keymap-prefix "C-c C-l")
+                     (spell-checking :variables
+                                     spell-checking-enable-by-default nil)
+                     syntax-checking))
+      (add-to-list 'dotspacemacs-configuration-layers layer)
+      (add-to-list 'dotspacemacs-additional-packages 'symex))
+  #+end_src
+
+* Low-config languages
+#+begin_src emacs-lisp :tangle .tangle/layers/langs.el
+  (dolist (layer '(ansible
+                   asciidoc
+                   csv
+                   (docker :variables docker-dockerfile-backend 'lsp)
+                   emacs-lisp
+                   (groovy :variables
+                           groovy-backend 'lsp
+                           groovy-lsp-jar-path "/usr/share/java/groovy-language-server/groovy-language-server-all.jar")
+                   graphviz
+                   html
+                   java
+                   (javascript :variables javascript-backend 'lsp)
+                   (json :variables json-backend 'lsp)
+                   latex
+                   (lispy :variables
+                          lispy-completion-method 'helm
+                          lispy-clojure-middleware-tests nil)
+                   major-modes
+                   (markdown :variables markdown-live-preview-engine 'vmd)
+                   plantuml
+                   (python :variables
+                           python-auto-set-local-pyenv-version nil
+                           python-backend 'lsp
+                           python-lsp-server 'pyright
+                           python-test-runner 'pytest
+                           python-formatter 'black
+                           python-format-on-save t)
+                   (conda :variables
+                          conda-anaconda-home "/opt/miniconda3"
+                          conda-env-home-directory "~/.conda"
+                          conda-env-autoactivate-mode t)
+                   nginx
+                   (plantuml :variables
+                             plantuml-jar-path "/usr/bin/plantuml")
+                   (shell-scripts :variables shell-scripts-backend 'lsp)
+                   (sql :variables
+                        sql-capitalize-keywords t
+                        sql-backend 'lsp
+                        sql-dialect 'postgres
+                        sqlfmt-executable "pg_format"
+                        sqlfmt-options '("--wrap-limit" "80"))
+                   systemd
+                   terraform
+                   (yaml :variables yaml-enable-lsp t)))
+    (add-to-list 'dotspacemacs-configuration-layers layer))
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/langs.el
+  ;;   :hook
+  ;;   ;; If you want it in all text modes:
+  ;;   (markdown-mode . mixed-pitch-mode))
+#+end_src
+
+* Haskell
+#+begin_src emacs-lisp :tangle .tangle/layers/langs.el
+  (add-to-list 'dotspacemacs-configuration-layers 'haskell)
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/langs.el
+  ;; haskell setup
+  (with-eval-after-load "haskell-mode"
+    (defun haskell-evil-open-above ()
+      (interactive)
+      (evil-digit-argument-or-evil-beginning-of-line)
+      (haskell-indentation-newline-and-indent)
+      (evil-previous-line)
+      (haskell-indentation-indent-line)
+      (evil-append-line nil))
+
+    (defun haskell-evil-open-below ()
+      (interactive)
+      (evil-append-line nil)
+      (haskell-indentation-newline-and-indent))
+
+    (evil-define-key 'normal haskell-mode-map "o" 'haskell-evil-open-below
+      "O" 'haskell-evil-open-above))
+#+end_src
+
+* Rust
+#+begin_src emacs-lisp :tangle .tangle/layers/langs.el
+  (add-to-list 'dotspacemacs-configuration-layers
+               '(rust :variables
+                      rust-format-on-save t
+                      lsp-rust-server 'rust-analyzer))
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/langs.el
+  ;; rust setup
+  ;; see https://github.com/kwrooijen/cargo.el/issues/29 for more info
+  (with-eval-after-load 'rust-mode
+    (define-key rust-mode-map (kbd "C-q") 'my-cargo-run))
+
+  (defun my-cargo-run ()
+    "Build and run Rust code."
+    (interactive)
+    (cargo-process-run)
+    (let ((orig-win (selected-window))
+          (run-win (display-buffer (get-buffer "*Cargo Run*") nil 'visible)))
+      (select-window run-win)
+      (comint-mode)
+      (read-only-mode 0)
+      (end-of-buffer)))
+#+end_src
