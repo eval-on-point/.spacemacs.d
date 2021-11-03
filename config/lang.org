@@ -36,8 +36,13 @@
                      (spell-checking :variables
                                      spell-checking-enable-by-default nil)
                      syntax-checking))
-      (add-to-list 'dotspacemacs-configuration-layers layer)
-      (add-to-list 'dotspacemacs-additional-packages 'symex))
+      (add-to-list 'dotspacemacs-configuration-layers layer))
+
+    (add-to-list 'dotspacemacs-additional-packages '(kbd-mode :location
+                                                              (recipe
+                                                               :fetcher github
+                                                               :repo "kmonad/kbd-mode"
+                                                               :files ("lisp/*.el"))))
   #+end_src
 
 * Low-config languages
