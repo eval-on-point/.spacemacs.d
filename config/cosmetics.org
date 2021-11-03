@@ -22,6 +22,7 @@
   (setq-default dotspacemacs-themes
                 '(solarized-dark
                   solarized-light
+                  tsdh-light
                   doom-fairy-floss
                   doom-solarized-light
                   doom-laserwave
