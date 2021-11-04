@@ -202,9 +202,5 @@
     :init
     (load-library "~/.spacemacs.d/config/gcal-secret.el.gpg")
     :config
-    (org-gcal-fetch)
-    (add-hook 'org-agenda-mode-hook #'org-gcal-fetch)
-    ;;  https://www.masteringemacs.org/article/keeping-secrets-in-emacs-gnupg-auth-sources
-    ;; should use this ^
-    )
+    (add-hook 'org-agenda-mode-hook #'org-gcal-fetch))
 #+end_src
