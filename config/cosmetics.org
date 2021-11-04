@@ -28,8 +28,10 @@
                   doom-laserwave
                   doom-city-lights
                   doom-manegarm)
-                dotspacemacs-default-font '("FiraCode Nerd Font"
-                                            :size 8.0
+                dotspacemacs-default-font `("FiraCode Nerd Font"
+                                            :size ,(pcase system-name
+                                                     ("aphex" 6.0)
+                                                     ("beethoven" 8.0))
                                             ;; :size 20
                                             :weight normal
                                             :width normal)
