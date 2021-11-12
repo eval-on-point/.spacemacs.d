@@ -199,8 +199,8 @@
     (org-gcal-remove-api-cancelled-events t)
     (org-gcal-recurring-events-mode 'top-level)
     (org-gcal-auto-archive t)
-    :init
-    (load-library "~/.spacemacs.d/config/gcal-secret.el.gpg")
+    :hook
+    (org-agenda-mode . org-gcal-fetch)
     :config
-    (add-hook 'org-agenda-mode-hook #'org-gcal-fetch))
+    (load-library "~/.spacemacs.d/config/gcal-secret.el.gpg"))
 #+end_src
