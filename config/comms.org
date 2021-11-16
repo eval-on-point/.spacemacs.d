@@ -1,0 +1,118 @@
+#+begin_src emacs-lisp :tangle .tangle/layers/comm.el
+  (dolist (layer '((mu4e :variables
+                         mu4e-maildir "~/.mail"
+                         ;; http://pragmaticemacs.com/emacs/fixing-duplicate-uid-errors-when-using-mbsync-and-mu4e/
+                         mu4e-change-filenames-when-moving t
+                         mu4e-get-mail-command "mbsync -a"
+                         mu4e-view-show-images t
+                         mu4e-update-interval (* 60 2)
+                         mu4e-org-compose-support t
+                         org-mu4e-convert-to-html t
+                         org-mime-export-options '(:section-numbers nil
+                                                   :with-author nil
+                                                   :with-toc nil)
+                         mu4e-enable-async-operations t
+                         mu4e-enable-notifications t
+                         mu4e-autorun-background-at-startup t)))
+    (add-to-list 'dotspacemacs-configuration-layers layer))
+#+end_src
+
+#+begin_src emacs-lisp :tangle .tangle/user-config/comm.el
+  (with-eval-after-load 'mu4e-alert
+    ;; Enable Desktop notifications
+    (mu4e-alert-set-default-style 'libnotify)
+
+    ;; https://github.com/iqbalansari/mu4e-alert/issues/40
+    (defun mu4e-alert--get-mu4e-frame ()
+      "Try getting a frame containing a mu4e buffer."
+      (car (delq nil (mapcar (lambda (buffer)
+                               (when (and buffer
+                                          (get-buffer-window buffer t))
+                                 (window-frame (get-buffer-window buffer t))))
+                             (list mu4e-main-buffer-name)))))
+
+    (defun mu4e-alert-filter-repeated-mails (mails)
+      "Filters the MAILS that have been seen already."
+      (cl-remove-if (lambda (mail)
+                      (prog1 (and (not mu4e-alert-notify-repeated-mails)
+                                  (ht-get mu4e-alert-repeated-mails
+                                          (plist-get mail :message-id)))
+                        (ht-set! mu4e-alert-repeated-mails
+                                 (plist-get mail :message-id)
+                                 t)
+                        ))
+                    mails)))
+
+  (setq mu4e-contexts
+        `(
+          ,(make-mu4e-context
+            :name "Private"
+            :enter-func (lambda () (mu4e-message "Switch to the Private context"))
+            ;; leave-func not defined
+            :match-func
+            (lambda (msg)
+              (when msg
+                (mu4e-message-contact-field-matches msg
+                                                    :to ".+@horning.email")))
+            :vars '((user-mail-address . "mitchell@horning.email")
+                    (user-full-name . "Mitchell Horning")
+                    (mu4e-compose-signature .
+                                            (concat
+                                             "Mitchell Horning\n"))
+                    (mu4e-bookmarks
+                     .
+                     ((:name "Unread messages"
+                             :query "m:/personal/ and flag:unread and not flag:trashed and not flag:list"
+                             :key ?u)
+                      (:name "Today's messages"
+                             :query "m:/personal/ and date:today..now and not flag:list"
+                             :key ?t)
+                      (:name "Last 7 days" :query "m:/personal/ and date:7d..now and not flag:list"
+                             :key ?w)
+                      (:name "Mailing Lists" :query "m:/personal/ and flag:list"
+                             :key ?l)))
+                    (mu4e-maildir-shortcuts
+                     .
+                     ((:maildir "/personal/Inbox" :key ?a)
+                      (:maildir "/personal/Inbox/catchalls" :key ?c)
+                      (:maildir "/personal/Sent" :key ?s)))
+                    (smtpmail-smtp-server . "smtp.mailbox.org")
+                    (smtpmail-smtp-user . "mitchell@horning.email")
+                    (smtpmail-smtp-service . 587)))
+          ,(make-mu4e-context
+            :name "Work"
+            :enter-func (lambda () (mu4e-message "Switch to the Work context"))
+            ;; leave-fun not defined
+            :match-func
+            (lambda (msg)
+              (when msg
+                (mu4e-message-contact-field-matches msg
+                                                    :to ".+@ata-llc.com")))
+            :vars
+            '((user-mail-address . "mhorning@ata-llc.com")
+              (user-full-name . "Mitchell Horning")
+              (mu4e-compose-signature
+               .
+               (concat
+                "Mitchell Horning | Full Stack Engineer | ATA, LLC\n"))
+              (mu4e-bookmarks
+               .
+               ((:name "Unread messages"
+                       :query "m:/gmail/ and flag:unread and not flag:trashed and not flag:list"
+                       :key ?u)
+                (:name "Today's messages"
+                       :query "m:/gmail/ and date:today..now and not flag:list"
+                       :key ?t)
+                (:name "Last 7 days" :query "m:/gmail/ and date:7d..now and not flag:list"
+                       :key ?w)
+                (:name "Mailing Lists" :query "m:/gmail/ and flag:list"
+                       :key ?l)))
+              (mu4e-maildir-shortcuts
+               .
+               ((:maildir "/gmail/[Gmail]/All Mail" :key ?a)
+                (:maildir "/gmail/[Gmail]/Sent Mail" :key ?s)
+                (:maildir "/gmail/[Gmail]/Starred" :key ?t)))
+              (smtpmail-smtp-server . "smtp.gmail.com")
+              (smtpmail-smtp-user . "mhorning@ata-llc.com")
+              (smtpmail-smtp-service . 587)))))
+#+end_src
