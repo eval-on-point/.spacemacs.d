@@ -56,9 +56,11 @@
                                                     :to ".+@horning.email")))
             :vars '((user-mail-address . "mitchell@horning.email")
                     (user-full-name . "Mitchell Horning")
-                    (mu4e-compose-signature .
-                                            (concat
-                                             "Mitchell Horning\n"))
+
+                    (mu4e-sent-folder . "/personal/Sent")
+                    (mu4e-sent-messages-behavior . sent)
+
+                    (mu4e-compose-signature . "Mitchell Horning\n")
                     (mu4e-bookmarks
                      .
                      ((:name "Unread messages"
@@ -95,6 +97,10 @@
                .
                (concat
                 "Mitchell Horning | Full Stack Engineer | ATA, LLC\n"))
+                
+              (mu4e-sent-folder . "/gmail/[Gmail]/Sent Mail")
+              (mu4e-sent-messages-behavior . delete)
+
               (mu4e-bookmarks
                .
                ((:name "Unread messages"
