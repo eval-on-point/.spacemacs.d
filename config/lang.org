@@ -41,8 +41,7 @@
     (add-to-list 'dotspacemacs-additional-packages '(kbd-mode :location
                                                               (recipe
                                                                :fetcher github
-                                                               :repo "kmonad/kbd-mode"
-                                                               :files ("lisp/*.el"))))
+                                                               :repo "kmonad/kbd-mode")))
   #+end_src
 
 * Low-config languages
