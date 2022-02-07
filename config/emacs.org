@@ -25,6 +25,7 @@
 
     (add-to-list 'dotspacemacs-configuration-layers layer))
     (add-to-list 'dotspacemacs-additional-packages 'mixed-pitch)
+    ;; https://www.spacemacs.org/doc/VIMUSERS.html#changing-the-escape-key
     (add-to-list 'dotspacemacs-excluded-packages 'evil-escape)
   #+end_src
 
@@ -122,7 +123,7 @@
                  markdown-mode-hook)
                #'mixed-pitch-mode)
 
-    (add-hooks '(prog-mode-hook text-mode-hook) #'auto-fill-mode)
+    (add-hook 'prog-mode-hook #'auto-fill-mode)
     (add-hook 'prog-mode-hook #'column-enforce-mode)
 
     ;; https://emacs.stackexchange.com/questions/21149/let-switch-to-buffer-to-already-open-buffer-switch-to-that-window-rather-than-o

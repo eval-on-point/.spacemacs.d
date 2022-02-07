@@ -2,17 +2,19 @@
   (dolist (layer '((org :variables
                         org-startup-folded nil
                         org-agenda-files '("~/org-gcal/schedule.org"
-                                           "~/org")
-                        org-agenda-file-regexp "\\`[^.].*\\.org$\\'"
+                                           "~/org"
+                                           "~/org/ATA"
+                                           "~/org/journal")
                         org-complete-tags-always-offer-all-agenda-tags t
                         org-confirm-babel-evaluate nil
-                        ;; org-enable-org-journal-support t
-                        ;; org-journal-dir "~/org/journal/"
-                        ;; org-journal-date-prefix "#+TITLE: "
-                        ;; org-journal-time-prefix "* "
-                        ;; org-journal-file-format "%Y-%m-%d.org"
-                        ;; org-journal-time-format "[%F %R]"
-                        ;; org-enable-github-support t
+                        org-agenda-skip-deadline-prewarning-if-scheduled t
+                        org-enable-org-journal-support t
+                        org-journal-dir "~/org/journal/"
+                        org-journal-date-prefix "#+TITLE: "
+                        org-journal-time-prefix "* "
+                        org-journal-file-format "%Y-%m-%d.org"
+                        org-journal-time-format "[%F %R]"
+                        org-enable-github-support t
                         org-enable-notifications t
                         org-start-notification-daemon-on-startup t
                         org-babel-default-header-args:shell '((:results . ":output"))
@@ -20,8 +22,7 @@
                         org-src-window-setup 'current-window)))
     (add-to-list 'dotspacemacs-configuration-layers layer))
 
-  (dolist (package '(envrc
-                     org-gcal
+  (dolist (package '(org-gcal
                      org-roam
                      org-wild-notifier))
       (add-to-list 'dotspacemacs-additional-packages package))

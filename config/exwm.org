@@ -8,6 +8,7 @@ I use Spacemacs as my Window Manager.
                  '(exwm :variables
                         exwm-autostart-xdg-applications t
                         exwm-enable-systray t
+                        exwm-input-line-mode-passthrough t
                         exwm-floating-border-color "#586e75"
                         exwm-layout-show-all-buffers t
                         exwm-workspace-show-all-buffers t

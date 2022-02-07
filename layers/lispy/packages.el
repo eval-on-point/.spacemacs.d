@@ -16,6 +16,7 @@
                                   additional-insert
                                   additional-motions
                                   additional-wrap
+                                  atom-movement
                                   c-u
                                   c-w
                                   commentary

@@ -33,6 +33,8 @@
                           lsp-ui-sideline-show-code-actions nil
                           lsp-ui-sideline-show-hover t
                           lsp-keymap-prefix "C-c C-l")
+                     (scheme :variables
+                             scheme-implementations '(guile))
                      (spell-checking :variables
                                      spell-checking-enable-by-default nil)
                      syntax-checking))
