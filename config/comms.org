@@ -97,7 +97,7 @@
                .
                (concat
                 "Mitchell Horning | Full Stack Engineer | ATA, LLC\n"))
-                
+
               (mu4e-sent-folder . "/gmail/[Gmail]/Sent Mail")
               (mu4e-sent-messages-behavior . delete)
 

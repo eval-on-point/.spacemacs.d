@@ -64,6 +64,7 @@
                           lispy-completion-method 'helm
                           lispy-clojure-middleware-tests nil)
                    major-modes
+                   nix
                    (markdown :variables markdown-live-preview-engine 'vmd)
                    plantuml
                    (python :variables
@@ -80,7 +81,9 @@
                    nginx
                    (plantuml :variables
                              plantuml-jar-path "/usr/bin/plantuml")
-                   (shell-scripts :variables shell-scripts-backend 'lsp)
+                   (scheme :variables
+                           scheme-implementation '(guile racket))
+                   (shell-scripts :variables shell-scripts-format-on-save t)
                    (sql :variables
                         sql-capitalize-keywords t
                         sql-backend 'lsp

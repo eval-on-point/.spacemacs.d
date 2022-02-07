@@ -22,18 +22,22 @@
                                treemacs-use-filewatch-mode t
                                treemacs-use-git-mode 'extended
                                treemacs-use-icons-dired nil)))
-      (add-to-list 'dotspacemacs-configuration-layers layer))
 
-      (add-to-list 'dotspacemacs-additional-packages 'mixed-pitch)
+    (add-to-list 'dotspacemacs-configuration-layers layer))
+    (add-to-list 'dotspacemacs-additional-packages 'mixed-pitch)
+    (add-to-list 'dotspacemacs-excluded-packages 'evil-escape)
   #+end_src
 
   #+begin_src emacs-lisp :tangle .tangle/init/emacs.el
     (setq-default
      dotspacemacs-emacs-leader-key "M-SPC"  ; avoid conflict with lispy-mark
-     dotspacemacs-major-mode-emacs-leader-key "s-,"
+     dotspacemacs-enable-server t
      dotspacemacs-line-numbers '(:disabled-for-modes text-mode)
+     dotspacemacs-major-mode-emacs-leader-key "s-,"
+     dotspacemacs-mode-line-theme 'custom
      dotspacemacs-scratch-buffer-persistent t
-     dotspacemacs-scratch-mode 'org-mode)
+     dotspacemacs-scratch-mode 'org-mode
+     dotspacemacs-whitespace-cleanup 'all)
   #+end_src
 
   #+begin_src emacs-lisp :tangle .tangle/user-init/emacs.el
@@ -56,6 +60,55 @@
                   which-key-idle-delay 2
                   which-key-show-early-on-C-h t)
 
+    (defun spaceline-custom-theme (&rest additional-segments)
+      (setq spaceline-all-the-icons-highlight-file-name t)
+      (spaceline-all-the-icons-theme)
+      (spaceline-all-the-icons--setup-git-ahead) ;; Enable # of commits ahead of upstream in git
+      (spaceline-all-the-icons--setup-anzu)
+
+      (spaceline-define-segment my-mode-icon
+        "An `all-the-icons' segment indicating the current buffer's mode with an icon"
+        (let ((icon (all-the-icons-icon-for-mode major-mode)))
+          (unless (symbolp icon)
+            (propertize icon
+                        'help-echo (format "Major-mode: `%s'" major-mode)))))
+
+      (spaceline-compile
+        ;; left side
+        `((persp-name
+           :face highlight-face
+           :priority 100)
+          (purpose :priority 94)
+          (all-the-icons-modified
+           buffer-id
+           remote-host
+           buffer-size)
+          auto-compile
+          (process :when active)
+          (my-mode-icon
+           minor-modes)
+          (all-the-icons-vc-icon
+           all-the-icons-vc-status
+           ((all-the-icons-git-ahead
+             all-the-icons-git-status) :separator " "))
+
+          ((flycheck-error flycheck-warning flycheck-info)
+           :when active
+           :priority 89)
+          ((org-pomodoro :when active)
+           (org-clock :when active))
+          (anzu :face 'mode-line))
+        `((python-pyvenv :fallback python-pyenv)
+          (selection-info :priority 95)
+          input-method
+          (global :when active)
+          (column :priority 99)))
+
+      (spaceline-toggle-buffer-size-off)
+      (setq-default mode-line-format '("%e" (:eval (spaceline-ml-main))))
+      (ace-window-display-mode)
+      (spaceline-toggle-hud-off))
+
     (defun add-hooks (hooks functions)
       (cond ((not functions) nil)
             ((consp functions)
@@ -72,11 +125,27 @@
     (add-hooks '(prog-mode-hook text-mode-hook) #'auto-fill-mode)
     (add-hook 'prog-mode-hook #'column-enforce-mode)
 
-
     ;; https://emacs.stackexchange.com/questions/21149/let-switch-to-buffer-to-already-open-buffer-switch-to-that-window-rather-than-o
     (defun switch-to-buffer--hack (orig-fun &rest args)
       (if-let ((win (get-buffer-window (car args))))
           (select-window win)
         (apply orig-fun args)))
     (advice-add 'switch-to-buffer :around #'switch-to-buffer--hack)
+
+    (global-set-key (kbd "C-;") 'avy-goto-char)
+  #+end_src
+
+  #+begin_src emacs-lisp :tangle .tangle/user-config/emacs.el
+    (dolist (boring-regex '("\\*Help\\*" "\\*helpful.*\\*"))
+      (add-to-list 'spacemacs-useless-buffers-regexp boring-regex))
+
+    (spacemacs/set-leader-keys "pA" 'projectile-find-file-in-known-projects)
+    (setq projectile-ignored-projects
+          '("~/projects/personal/dotfiles/emacs/.emacs.d/"
+            "~/projects/personal/dotfiles/emacs/.spacemacs.d/")
+          projectile-switch-project-action
+          (lambda ()
+            (let ((magit-display-buffer-function
+                   #'magit-display-buffer-same-window-except-diff-v1))
+              (magit-status))))
   #+end_src

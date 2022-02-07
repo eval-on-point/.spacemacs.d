@@ -35,6 +35,7 @@
 
   (org-clock-persistence-insinuate)
   (add-hook 'org-mode-hook 'org-indent-mode)
+  (add-hook 'org-mode-hook 'turn-off-auto-fill)
 
   (defun my-org-capture-place-template-dont-delete-windows (oldfun args)
     (cl-letf (((symbol-function 'delete-other-windows) 'ignore))
